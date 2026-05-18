@@ -1,0 +1,11 @@
+# Build output
+/beacon
+/dist/
+
+# Relay mTLS material — never committed (DESIGN §4, §5)
+/etc/
+*.key
+*.crt
+
+# OS / editor cruft
+.DS_Store
