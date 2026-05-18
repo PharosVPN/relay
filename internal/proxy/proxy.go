@@ -46,14 +46,14 @@
 // remote-deployed beacon needs no access to the store or the CA
 // private key.
 //
-// PROVISIONAL CONTRACT VALUES. The metadata keys (x-pharos-device-fp,
+// PINNED CONTRACT IDENTIFIERS. The metadata keys (x-pharos-device-fp,
 // the x-pharos-* strip prefix), the delegation Organization marker
 // ("PharosVPN Relay"), and the default backend SNI ("helm-grpc") are
-// the beacon↔helm relayed-client contract. That contract is owned by
-// helm and will be published in docs/proto/ when helm builds M6b
-// (docs/BUILD.md §3, beacon/BUILD.md). They are placeholders pending
-// that contract; pin them to the published proto when it lands — do
-// not treat them as final.
+// part of the beacon↔helm relayed-client contract. helm owns that
+// contract and pins these identifiers in helm/BUILD.md ("Pinned
+// beacon ↔ helm identifiers"); helm's M6b relayed-client proto and PKI
+// use them exactly (docs/BUILD.md §3). Change them only in lockstep
+// with helm.
 package proxy
 
 import (
@@ -77,10 +77,11 @@ import (
 )
 
 // deviceFPMetadataKey is the one trusted metadata value beacon injects
-// after verifying the client's Device-CA leaf. delegationOrg is the
-// Organization marker on the relay's backend client leaf that tells
-// helm to trust that injected header. Both are provisional — see the
-// package doc.
+// after verifying the client's Device-CA leaf. clientMetadataStrip is
+// the prefix of client-set keys dropped before forwarding. delegationOrg
+// is the Organization marker on the relay's backend client leaf that
+// tells helm to trust the injected header. All three are pinned by the
+// beacon↔helm contract — see the package doc.
 const (
 	deviceFPMetadataKey = "x-pharos-device-fp"
 	clientMetadataStrip = "x-pharos-"
