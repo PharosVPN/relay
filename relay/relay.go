@@ -78,24 +78,23 @@ type Config struct {
 	// caravel mTLS clients, e.g. ":8443". Required.
 	ClientListenAddr string
 
+	// RelayCertPEM / RelayKeyPEM is the relay's single Fleet-CA leaf.
+	// It is presented on the public listener (server-auth) and on the
+	// helm backend leg (client-auth), so it MUST carry both the
+	// ServerAuth and ClientAuth EKUs and Organization="PharosVPN
+	// Relay" — helm's auth path keys delegation off that Organization.
+	// One cert for both legs is the pinned beacon↔helm contract
+	// (helm/BUILD.md). Required.
+	RelayCertPEM []byte
+	RelayKeyPEM  []byte
+
 	// ClientTrustPEM is the CA pool used to verify caravel client
 	// certificates — the Device CA. Required.
 	ClientTrustPEM []byte
 
-	// ClientCertPEM / ClientKeyPEM is the server leaf the relay
-	// presents to caravel clients (a Fleet-CA relay cert). Required.
-	ClientCertPEM []byte
-	ClientKeyPEM  []byte
-
 	// BackendTrustPEM is the CA pool used to verify helm's gRPC-leg
 	// server certificate — the Fleet CA. Required.
 	BackendTrustPEM []byte
-
-	// BackendCertPEM / BackendKeyPEM is the client leaf the relay
-	// presents to helm. It MUST carry Organization="PharosVPN Relay"
-	// so helm's auth path recognises the delegation. Required.
-	BackendCertPEM []byte
-	BackendKeyPEM  []byte
 
 	// BackendServerName is the SNI / verification name for the helm
 	// dial. Defaults to "helm-grpc".
@@ -120,14 +119,12 @@ func (c *Config) validate() error {
 	switch {
 	case c.ClientListenAddr == "":
 		return errors.New("relay: Config.ClientListenAddr required")
+	case len(c.RelayCertPEM) == 0 || len(c.RelayKeyPEM) == 0:
+		return errors.New("relay: Config.Relay{Cert,Key}PEM required")
 	case len(c.ClientTrustPEM) == 0:
 		return errors.New("relay: Config.ClientTrustPEM required")
-	case len(c.ClientCertPEM) == 0 || len(c.ClientKeyPEM) == 0:
-		return errors.New("relay: Config.Client{Cert,Key}PEM required")
 	case len(c.BackendTrustPEM) == 0:
 		return errors.New("relay: Config.BackendTrustPEM required")
-	case len(c.BackendCertPEM) == 0 || len(c.BackendKeyPEM) == 0:
-		return errors.New("relay: Config.Backend{Cert,Key}PEM required")
 	case c.BackendDialer == nil:
 		return errors.New("relay: Config.BackendDialer required")
 	}
@@ -223,9 +220,9 @@ func (r *Relay) Stop() {
 // the identity decision to helm. Any certificate that IS presented
 // must chain to the Device CA.
 func buildClientTLS(cfg Config) (*tls.Config, error) {
-	cert, err := tls.X509KeyPair(cfg.ClientCertPEM, cfg.ClientKeyPEM)
+	cert, err := tls.X509KeyPair(cfg.RelayCertPEM, cfg.RelayKeyPEM)
 	if err != nil {
-		return nil, fmt.Errorf("parse client keypair: %w", err)
+		return nil, fmt.Errorf("parse relay keypair: %w", err)
 	}
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(cfg.ClientTrustPEM) {
@@ -248,9 +245,9 @@ func buildClientTLS(cfg Config) (*tls.Config, error) {
 // substream) — the relay never dials helm by address, so the gRPC
 // target is an inert passthrough placeholder.
 func dialBackend(cfg Config) (*grpc.ClientConn, error) {
-	cert, err := tls.X509KeyPair(cfg.BackendCertPEM, cfg.BackendKeyPEM)
+	cert, err := tls.X509KeyPair(cfg.RelayCertPEM, cfg.RelayKeyPEM)
 	if err != nil {
-		return nil, fmt.Errorf("parse backend keypair: %w", err)
+		return nil, fmt.Errorf("parse relay keypair: %w", err)
 	}
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(cfg.BackendTrustPEM) {

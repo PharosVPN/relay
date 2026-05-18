@@ -39,12 +39,10 @@ go helmGRPCServer.Serve(pipe)
 // 3. Start the relay; its backend dials helm through the pipe.
 r, err := relay.Start(relay.Config{
     ClientListenAddr: ":8443",          // public mTLS port for caravel
+    RelayCertPEM:     relayCertPEM,      // single Fleet-CA leaf — see §4
+    RelayKeyPEM:      relayKeyPEM,
     ClientTrustPEM:   deviceCAPEM,       // verifies caravel device leaves
-    ClientCertPEM:    relayCertPEM,      // Fleet-CA relay cert presented to caravel
-    ClientKeyPEM:     relayKeyPEM,
     BackendTrustPEM:  fleetCAPEM,        // verifies helm's gRPC leaf
-    BackendCertPEM:   relayCertPEM,      // Fleet-CA delegation leaf (O="PharosVPN Relay")
-    BackendKeyPEM:    relayKeyPEM,
     BackendDialer:    pipe.DialContext,  // <-- the only embedded-specific line
 })
 if err != nil { /* ... */ }
@@ -133,18 +131,16 @@ Device-CA leaf). The default backend SNI is `helm-grpc`; override it with
 
 ---
 
-## 4. Open item for helm M6b
+## 4. The relay certificate
 
-beacon takes trust roots and leaves as **input** (`relay.Config`, the `tunnel`
-`*tls.Config`), so it is CA-agnostic — but `helm` owns issuance and must
-decide:
+A relay holds **one** certificate, pinned in `helm/BUILD.md`: a single
+Fleet-CA leaf carrying
 
-- **One relay cert or two.** beacon can use a single Fleet-CA leaf for the
-  public listener (server-auth), the tunnel listener (server-auth) and the
-  backend leg (client-auth) — it needs both EKUs and `O="PharosVPN Relay"`.
-  `relay.Config` also accepts distinct `Client*`/`Backend*` certs if helm
-  prefers to split them. The remote `beacon run` binary currently expects one
-  (`relay.crt`).
+- the **ServerAuth** EKU (public listener + tunnel listener), and
+- the **ClientAuth** EKU (the backend gRPC leg), and
+- `Organization="PharosVPN Relay"` — helm's gRPC auth path keys delegation
+  off this Organization.
 
-Raised so helm pins it when M6b builds the relay PKI; beacon already supports
-either choice.
+helm's M6b PKI issues exactly that. `relay.Config` takes it as `RelayCertPEM`
+/ `RelayKeyPEM`; the remote `beacon run` binary reads it as `relay.crt` /
+`relay.key`. beacon stores no CA key — helm owns all issuance.

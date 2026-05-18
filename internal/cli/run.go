@@ -104,12 +104,10 @@ func runRemote(ctx context.Context, opts runOptions) error {
 
 	r, err := relay.Start(relay.Config{
 		ClientListenAddr: opts.clientAddr,
+		RelayCertPEM:     mat.relayCert,
+		RelayKeyPEM:      mat.relayKey,
 		ClientTrustPEM:   mat.deviceCA,
-		ClientCertPEM:    mat.relayCert,
-		ClientKeyPEM:     mat.relayKey,
 		BackendTrustPEM:  mat.fleetCA,
-		BackendCertPEM:   mat.relayCert,
-		BackendKeyPEM:    mat.relayKey,
 		BackendDialer: func(dctx context.Context, _ string) (net.Conn, error) {
 			ct := current.Load()
 			if ct == nil || ct.Closed() {

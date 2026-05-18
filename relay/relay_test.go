@@ -58,12 +58,10 @@ func newPKI(t *testing.T) *pki {
 func (p *pki) relayConfig(listenAddr string, dialer dialerFunc) Config {
 	return Config{
 		ClientListenAddr:  listenAddr,
+		RelayCertPEM:      p.relayCertPEM,
+		RelayKeyPEM:       p.relayKeyPEM,
 		ClientTrustPEM:    p.deviceCA.certPEM,
-		ClientCertPEM:     p.relayCertPEM,
-		ClientKeyPEM:      p.relayKeyPEM,
 		BackendTrustPEM:   p.fleetCA.certPEM,
-		BackendCertPEM:    p.relayCertPEM,
-		BackendKeyPEM:     p.relayKeyPEM,
 		BackendServerName: defaultBackendServerName,
 		BackendDialer:     dialer,
 	}
