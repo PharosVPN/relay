@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PharosVPN Authors
 
-// Package cli wires up the beacon command-line interface — the `run`
-// command that operates a remote relay, and `version`. The embedded
-// relay is not a CLI command: helm imports github.com/PharosVPN/beacon/relay
-// and runs it in-process (see docs/HELM-INTEGRATION.md).
+// Package cli wires up the beacon command-line interface — `gen-csr`
+// and `run`, which form the helm↔beacon relay-enrolment contract, plus
+// `version`. The embedded relay is not a CLI command: helm imports
+// github.com/PharosVPN/beacon/relay and runs it in-process (see
+// docs/HELM-INTEGRATION.md).
 package cli
 
 import (
@@ -34,6 +35,7 @@ func newRootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 	root.AddCommand(
+		newGenCSRCmd(),
 		newRunCmd(),
 		newVersionCmd(),
 	)

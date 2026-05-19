@@ -63,3 +63,25 @@ func TestLoadMaterialComplete(t *testing.T) {
 		t.Errorf("relayCert = %q, want %q", m.relayCert, "pem-"+fileRelayCrt)
 	}
 }
+
+// TestGenCSRCommand confirms `beacon gen-csr` writes the relay key into
+// the config dir and prints only a CSR PEM to stdout — helm captures
+// that stdout verbatim over SSH.
+func TestGenCSRCommand(t *testing.T) {
+	dir := t.TempDir()
+	root := newRootCmd()
+	var out, errOut bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&errOut)
+	root.SetArgs([]string{"gen-csr", "--config-dir", dir})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("execute gen-csr: %v", err)
+	}
+	if got := out.String(); !strings.HasPrefix(got, "-----BEGIN CERTIFICATE REQUEST-----") {
+		t.Errorf("stdout is not a CSR PEM: %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(dir, fileRelayKey)); err != nil {
+		t.Errorf("relay key not written: %v", err)
+	}
+}

@@ -32,15 +32,17 @@ Go · transparent gRPC proxy · reverse-tunnel transport (multiplexed) · mTLS.
 - [`relay/`](relay/) — the embeddable relay: the transparent proxy, the public
   mTLS listener, and the in-memory `Pipe` for embedded mode.
 - [`tunnel/`](tunnel/) — the reverse-tunnel transport `helm` dials out over.
-- [`cmd/beacon`](cmd/beacon/) — the remote-relay binary (`beacon run`).
+- [`cmd/beacon`](cmd/beacon/) — the relay binary: `gen-csr` (SSH enrolment)
+  and `run` (the remote relay).
 
 `helm` embeds a relay in-process by importing the `relay` package — see
 [docs/HELM-INTEGRATION.md](docs/HELM-INTEGRATION.md).
 
 ## Status
 
-🚧 Pre-alpha. The transparent proxy and both transports (embedded + remote)
-are built; relay enrollment and packaging are next. See [BUILD.md](BUILD.md).
+🚧 Pre-alpha. The transparent proxy, both transports (embedded + remote), and
+SSH relay enrolment (`gen-csr`) are built; static-binary packaging and deploy
+docs are next. See [BUILD.md](BUILD.md).
 
 ## License
 
