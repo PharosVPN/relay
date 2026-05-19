@@ -1,0 +1,50 @@
+# systemd unit for a remote beacon relay (PharosVPN).
+#
+# Install to /etc/systemd/system/beacon.service — see docs/DEPLOY.md.
+# beacon holds no database and writes nothing at runtime: it only reads
+# its mTLS material from /etc/beacon, so the sandbox below is strict.
+
+[Unit]
+Description=PharosVPN beacon relay
+Documentation=https://github.com/PharosVPN/beacon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/beacon run --config-dir /etc/beacon
+Restart=on-failure
+RestartSec=5
+
+# Unprivileged service account. /etc/beacon and, in particular, the
+# 0600 relay.key must be owned by (or readable by) this user — run
+# `beacon gen-csr` as this user during enrolment. See docs/DEPLOY.md.
+User=beacon
+Group=beacon
+
+# CAP_NET_BIND_SERVICE is needed only if you serve caravel clients on a
+# port below 1024 (the defaults, 8443/8444, do not need it).
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Sandbox — beacon needs no write access and no privileges.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

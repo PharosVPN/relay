@@ -38,11 +38,17 @@ Go · transparent gRPC proxy · reverse-tunnel transport (multiplexed) · mTLS.
 `helm` embeds a relay in-process by importing the `relay` package — see
 [docs/HELM-INTEGRATION.md](docs/HELM-INTEGRATION.md).
 
+## Build & deploy
+
+`make build` produces a static binary in `dist/`. To run a remote relay, see
+[docs/DEPLOY.md](docs/DEPLOY.md) and the [`deploy/beacon.service`](deploy/beacon.service)
+systemd unit.
+
 ## Status
 
-🚧 Pre-alpha. The transparent proxy, both transports (embedded + remote), and
-SSH relay enrolment (`gen-csr`) are built; static-binary packaging and deploy
-docs are next. See [BUILD.md](BUILD.md).
+🚧 Pre-alpha. The transparent proxy, both transports (embedded + remote), SSH
+relay enrolment (`gen-csr`), and static-binary packaging are built. See
+[BUILD.md](BUILD.md).
 
 ## License
 
