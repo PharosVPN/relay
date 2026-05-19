@@ -53,7 +53,7 @@ adapted files to AGPL-3.0.
 | R2 | Client-side mTLS termination + metadata sanitization |
 | R3 | Embedded mode (in-process with `helm`) |
 | R4 | Remote reverse-tunnel mode (`helm` dials out) + reconnect/keepalive |
-| R5 | Relay enrollment (bootstrap token, Fleet-CA relay cert) |
+| R5 | Relay enrollment — `gen-csr` CSR-over-SSH, Fleet-CA relay cert (decision 14, no token) |
 | R6 | Static-binary packaging + deploy docs |
 
 ## Non-negotiables
