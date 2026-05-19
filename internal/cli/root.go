@@ -1,13 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PharosVPN Authors
 
-// Package cli wires up the beacon command-line interface. The relay's
-// transport commands (embedded mode, remote reverse-tunnel mode) land in
-// later milestones once the beacon↔helm wire contract is published in
-// docs/proto/; for now the CLI exposes only `version`.
+// Package cli wires up the beacon command-line interface — the `run`
+// command that operates a remote relay, and `version`. The embedded
+// relay is not a CLI command: helm imports github.com/PharosVPN/beacon/relay
+// and runs it in-process (see docs/HELM-INTEGRATION.md).
 package cli
 
-import "github.com/spf13/cobra"
+import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/spf13/cobra"
+)
 
 // version is the beacon build version. Overridable at link time with
 // -ldflags "-X github.com/PharosVPN/beacon/internal/cli.version=...".
@@ -27,12 +34,16 @@ func newRootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 	root.AddCommand(
+		newRunCmd(),
 		newVersionCmd(),
 	)
 	return root
 }
 
-// Execute runs the beacon CLI.
+// Execute runs the beacon CLI. The command context is cancelled on
+// SIGINT/SIGTERM so `beacon run` shuts down cleanly.
 func Execute() error {
-	return newRootCmd().Execute()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return newRootCmd().ExecuteContext(ctx)
 }

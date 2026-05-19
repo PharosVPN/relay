@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PharosVPN Authors
 
-package proxy
+package relay
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ func (rawCodec) Name() string { return "proto" }
 func (rawCodec) Marshal(v any) ([]byte, error) {
 	b, ok := v.(*frame)
 	if !ok {
-		return nil, fmt.Errorf("proxy: rawCodec.Marshal got %T, want *frame", v)
+		return nil, fmt.Errorf("relay: rawCodec.Marshal got %T, want *frame", v)
 	}
 	return b.data, nil
 }
@@ -33,7 +33,7 @@ func (rawCodec) Marshal(v any) ([]byte, error) {
 func (rawCodec) Unmarshal(data []byte, v any) error {
 	b, ok := v.(*frame)
 	if !ok {
-		return fmt.Errorf("proxy: rawCodec.Unmarshal into %T, want *frame", v)
+		return fmt.Errorf("relay: rawCodec.Unmarshal into %T, want *frame", v)
 	}
 	b.data = make([]byte, len(data))
 	copy(b.data, data)

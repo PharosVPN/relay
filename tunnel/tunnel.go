@@ -17,18 +17,21 @@
 //	  (yamux Server, accepts)        (yamux Client, opens)
 //
 //	client ── mTLS ──▶ beacon:public ── yamux substream ──▶ helm
-//	                   (internal/proxy)               (helm's grpc.Server)
+//	                   (package relay)               (helm's grpc.Server)
 //
 // helm's grpc.Server doesn't know the tunnel exists. Every accepted
 // yamux substream on the helm side looks like an incoming TCP conn to
 // it — [SessionListener] adapts the yamux session to a standard
 // net.Listener.
 //
-// Auth: helm authenticates to beacon with a leaf minted from the
-// Device CA carrying Organization="PharosVPN Relay" — the same
-// delegation marker the relayed-client path uses. No new PKI, no new
-// trust roots. (That Organization marker is a provisional value of the
-// beacon↔helm contract — see internal/proxy for the full note.)
+// This package is TLS-agnostic: helm builds the *tls.Config it dials
+// with, and beacon wraps its tunnel listener with tls.NewListener
+// before handing it to AcceptOne. The tunnel leg is mutually
+// authenticated — helm presents a Fleet-CA leaf carrying
+// Organization="PharosVPN Relay" (the pinned delegation marker, see
+// package relay), beacon presents its Fleet-CA relay cert. The inner
+// gRPC stream that rides the substreams is independently mTLS'd; that
+// inner cert is what helm's gRPC auth interceptor reads for delegation.
 //
 // Scope for v1: one helm per beacon, one beacon per helm. Multi-tenant
 // fan-in (several controllers behind one relay) needs a routing layer
@@ -338,6 +341,18 @@ func (t *ClientTunnel) Open(ctx context.Context) (net.Conn, error) {
 // opening a stream that's about to fail.
 func (t *ClientTunnel) Closed() bool {
 	return t == nil || t.sess == nil || t.sess.IsClosed()
+}
+
+// Done returns a channel closed when the tunnel tears down, by either
+// side. A relay supervisor selects on it to know when to accept the
+// next helm connection, rather than polling Closed.
+func (t *ClientTunnel) Done() <-chan struct{} {
+	if t == nil || t.sess == nil {
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+	return t.sess.CloseChan()
 }
 
 // AcceptOne accepts ONE helm TLS connection from [lis], wraps it in

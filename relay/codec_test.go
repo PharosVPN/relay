@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PharosVPN Authors
 
-package proxy
+package relay
 
 import (
 	"bytes"
@@ -63,8 +63,8 @@ func TestCodecName(t *testing.T) {
 // forwarded StreamDesc name.
 func TestMethodName(t *testing.T) {
 	cases := []struct{ in, want string }{
-		{"/pharos.account.v1.Sync/PullProfiles", "PullProfiles"},
-		{"PullProfiles", "PullProfiles"},
+		{"/pharos.account.v1.AccountSync/GetProfile", "GetProfile"},
+		{"GetProfile", "GetProfile"},
 		{"", ""},
 	}
 	for _, c := range cases {
