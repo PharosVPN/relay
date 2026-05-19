@@ -13,25 +13,24 @@ lets clients (`caravel`) reach a `helm` controller that has no public IP and no
 inbound ports. It holds no state and makes no policy decisions — `helm` does all
 of that.
 
-## Reuse — this is mostly a lift-and-rebrand
+## Reuse — this is mostly an adapt-and-rebrand
 
-The relay machinery already exists in the private `sultix` project at
-`/Users/khalefa/Projects/sultix.ai/sultix`, **owned by the same operator**. Lift
-and adapt:
+The relay machinery already exists in an earlier private project by the same
+operator. Adapt:
 
-- `internal/mcproxy/` — transparent gRPC proxy: raw-byte codec, stream director,
-  metadata sanitization (strip spoofable headers, inject the verified device
+- The transparent gRPC proxy: raw-byte codec, stream director, metadata
+  sanitization (strip spoofable headers, inject the verified device
   fingerprint).
-- `internal/mctunnel/` — reverse-tunnel transport: the controller dials *out*
-  to the relay, the relay accepts; substreams multiplexed over the outer
-  mTLS connection; reconnect with exponential backoff; keepalive.
+- The reverse-tunnel transport: the controller dials *out* to the relay, the
+  relay accepts; substreams multiplexed over the outer mTLS connection;
+  reconnect with exponential backoff; keepalive.
 - The embedded-relay (in-process, in-memory pipe) wiring.
 - The device-CA mTLS verification helpers.
 
-**Rebrand obligation (`docs/BUILD.md` §4):** strip *every* `sultix`, `mcproxy`,
-`mctunnel`, `x-sultix-*` identifier — package paths, type names, metadata keys,
-comments, filenames. The `beacon` repo must contain zero trace of `sultix`.
-Re-license all lifted files to AGPL-3.0.
+**Rebrand obligation (`docs/BUILD.md` §4):** strip *every* identifier from the
+origin project — package paths, type names, metadata keys, comments,
+filenames. The `beacon` repo must contain zero trace of it. Re-license all
+adapted files to AGPL-3.0.
 
 ## Behaviour
 
@@ -50,7 +49,7 @@ Re-license all lifted files to AGPL-3.0.
 
 | # | Output |
 |---|---|
-| R1 | Skeleton; lift + rebrand the proxy + tunnel packages from `sultix` |
+| R1 | Skeleton; adapt + rebrand the proxy + tunnel packages |
 | R2 | Client-side mTLS termination + metadata sanitization |
 | R3 | Embedded mode (in-process with `helm`) |
 | R4 | Remote reverse-tunnel mode (`helm` dials out) + reconnect/keepalive |
@@ -62,7 +61,7 @@ Re-license all lifted files to AGPL-3.0.
 - Stateless. No database. All lookups delegated to `helm`.
 - `helm` dials `beacon`, never the reverse, in remote mode.
 - `beacon` never sees plaintext profile bundles.
-- Zero `sultix` lineage in the source.
+- Zero origin-project lineage in the source.
 
 ## Depends on
 
