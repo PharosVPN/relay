@@ -22,14 +22,14 @@ import (
 )
 
 // defaultConfigDir is where a remote beacon reads its mTLS material.
-// helm places it there during relay enrollment (DESIGN §5); until
+// coxswain places it there during relay enrollment (DESIGN §5); until
 // that milestone (R5) an operator stages the files by hand.
 const defaultConfigDir = "/etc/beacon"
 
 // mTLS material filenames inside the config dir.
 const (
 	fileDeviceCA = "device-ca.crt" // verifies caravel client certs
-	fileFleetCA  = "fleet-ca.crt"  // verifies helm on the tunnel + backend legs
+	fileFleetCA  = "fleet-ca.crt"  // verifies coxswain on the tunnel + backend legs
 	fileRelayCrt = "relay.crt"     // beacon's Fleet-CA relay cert
 	fileRelayKey = "relay.key"     // its private key
 )
@@ -41,14 +41,14 @@ func newRunCmd() *cobra.Command {
 		Short: "Run beacon as a remote relay",
 		Long: "Run beacon as a remote relay on a public host.\n\n" +
 			"beacon serves caravel clients on --client-addr and waits for the\n" +
-			"helm controller to dial IN on --tunnel-addr; helm opens no inbound\n" +
+			"coxswain controller to dial IN on --tunnel-addr; coxswain opens no inbound\n" +
 			"ports of its own. Each client RPC is forwarded as a multiplexed\n" +
-			"substream back through that one helm-initiated connection.\n\n" +
+			"substream back through that one coxswain-initiated connection.\n\n" +
 			"mTLS material is read from --config-dir: device-ca.crt, fleet-ca.crt,\n" +
 			"relay.crt and relay.key. Relay enrollment (R5) will issue these over\n" +
 			"SSH; for now stage them by hand.\n\n" +
-			"To embed a relay in-process instead, helm imports the\n" +
-			"github.com/PharosVPN/beacon/relay package — see docs/HELM-INTEGRATION.md.",
+			"To embed a relay in-process instead, coxswain imports the\n" +
+			"github.com/PharosVPN/beacon/relay package — see docs/COXSWAIN-INTEGRATION.md.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runRemote(cmd.Context(), runOptions{
@@ -61,7 +61,7 @@ func newRunCmd() *cobra.Command {
 	cmd.Flags().StringVar(&clientAddr, "client-addr", ":8443",
 		"address to serve caravel mTLS clients on")
 	cmd.Flags().StringVar(&tunnelAddr, "tunnel-addr", ":8444",
-		"address helm dials in on to establish the reverse tunnel")
+		"address coxswain dials in on to establish the reverse tunnel")
 	cmd.Flags().StringVar(&configDir, "config-dir", defaultConfigDir,
 		"directory holding the relay's mTLS material")
 	return cmd
@@ -83,7 +83,7 @@ func runRemote(ctx context.Context, opts runOptions) error {
 		return err
 	}
 
-	// Tunnel listener: helm dials in here over mTLS. beacon terminates
+	// Tunnel listener: coxswain dials in here over mTLS. beacon terminates
 	// the TLS, then tunnel.AcceptOne wraps the connection as a yamux
 	// client session.
 	tunnelTLS, err := mat.tunnelServerTLS()
@@ -97,7 +97,7 @@ func runRemote(ctx context.Context, opts runOptions) error {
 	defer func() { _ = tcpLis.Close() }()
 	tunnelLis := tls.NewListener(tcpLis, tunnelTLS)
 
-	// current holds the live helm tunnel, replaced on every reconnect.
+	// current holds the live coxswain tunnel, replaced on every reconnect.
 	// nil means no controller is connected.
 	var current atomic.Pointer[tunnel.ClientTunnel]
 	go acceptTunnels(ctx, tunnelLis, &current, logf)
@@ -111,7 +111,7 @@ func runRemote(ctx context.Context, opts runOptions) error {
 		BackendDialer: func(dctx context.Context, _ string) (net.Conn, error) {
 			ct := current.Load()
 			if ct == nil || ct.Closed() {
-				return nil, errors.New("beacon: no helm tunnel connected")
+				return nil, errors.New("beacon: no coxswain tunnel connected")
 			}
 			return ct.Open(dctx)
 		},
@@ -122,14 +122,14 @@ func runRemote(ctx context.Context, opts runOptions) error {
 	}
 	defer r.Stop()
 
-	logf("[beacon] remote relay ready — caravel clients on %s, helm tunnel on %s",
+	logf("[beacon] remote relay ready — caravel clients on %s, coxswain tunnel on %s",
 		r.Addr(), opts.tunnelAddr)
 	<-ctx.Done()
 	logf("[beacon] shutdown signal received")
 	return nil
 }
 
-// acceptTunnels accepts helm's reverse-tunnel connections one at a
+// acceptTunnels accepts coxswain's reverse-tunnel connections one at a
 // time, publishing each as the current tunnel and waiting for it to
 // close before accepting the next. v1 is single-controller (DESIGN
 // §2; see package tunnel).
@@ -155,13 +155,13 @@ func acceptTunnels(
 			continue
 		}
 		current.Store(ct)
-		logf("[beacon] helm tunnel connected")
+		logf("[beacon] coxswain tunnel connected")
 		select {
 		case <-ctx.Done():
 			return
 		case <-ct.Done():
 			current.Store(nil)
-			logf("[beacon] helm tunnel closed — awaiting reconnect")
+			logf("[beacon] coxswain tunnel closed — awaiting reconnect")
 		}
 	}
 }
@@ -203,7 +203,7 @@ func loadMaterial(dir string) (*material, error) {
 }
 
 // tunnelServerTLS is the TLS config for the tunnel listener. beacon
-// presents its relay cert; helm must present a Fleet-CA client cert.
+// presents its relay cert; coxswain must present a Fleet-CA client cert.
 func (m *material) tunnelServerTLS() (*tls.Config, error) {
 	cert, err := tls.X509KeyPair(m.relayCert, m.relayKey)
 	if err != nil {

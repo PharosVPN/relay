@@ -30,8 +30,8 @@ and email must be real and match your `git config user.name` / `user.email`.
 
 ## Wire contracts
 
-`beacon` does not own a wire contract. The beacon↔helm reverse-tunnel and
-relayed-client protos are owned by `helm` and published in `docs/proto/`;
+`beacon` does not own a wire contract. The beacon↔coxswain reverse-tunnel and
+relayed-client protos are owned by `coxswain` and published in `docs/proto/`;
 `beacon` builds against them and never forks them (docs/BUILD.md §3).
 
 ## Reused code — rebrand obligation

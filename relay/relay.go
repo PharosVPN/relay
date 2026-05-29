@@ -3,32 +3,32 @@
 
 // Package relay is the embeddable PharosVPN relay: a stateless,
 // transparent gRPC proxy that terminates Device-CA mTLS from caravel
-// clients and forwards opaque gRPC streams to a helm controller
+// clients and forwards opaque gRPC streams to a coxswain controller
 // (DESIGN §2, §3).
 //
 // # Two transports, identical trust
 //
-// helm reaches the relay's backend over a caller-supplied dialer, so
+// coxswain reaches the relay's backend over a caller-supplied dialer, so
 // the same relay code serves both deployment modes (DESIGN §2 —
 // "transport differences only, identical trust"):
 //
-//   - Embedded: helm runs the relay in-process and sets
+//   - Embedded: coxswain runs the relay in-process and sets
 //     Config.BackendDialer to a [Pipe], an in-memory net.Conn pair.
-//   - Remote: a beacon binary runs the relay on a public host; helm
+//   - Remote: a beacon binary runs the relay on a public host; coxswain
 //     dials OUT to it over a reverse tunnel (package
 //     github.com/PharosVPN/beacon/tunnel) and the relay sets
 //     Config.BackendDialer to a closure over the tunnel substreams.
 //
 // Either way the backend leg is mutually authenticated gRPC: the
-// relay presents a delegation client leaf, helm verifies it. The
-// relay never dials helm directly — helm has no inbound ports.
+// relay presents a delegation client leaf, coxswain verifies it. The
+// relay never dials coxswain directly — coxswain has no inbound ports.
 //
 // # What the relay does
 //
 // It registers no gRPC services. Every inbound stream — unary,
 // server-stream, client-stream, bidi — hits an UnknownServiceHandler
 // that forwards it verbatim through an opaque byte codec. The relay
-// never decodes a message body, so adding a helm RPC needs zero relay
+// never decodes a message body, so adding a coxswain RPC needs zero relay
 // changes. It strips every client-supplied metadata key in the
 // reserved x-pharos-* namespace and injects exactly one trusted value
 // — the verified device fingerprint as x-pharos-device-fp.
@@ -37,16 +37,16 @@
 //
 // The relay terminates the client's mTLS, so a compromised remote
 // host can read RPC framing and metadata. Profile bundles, however,
-// cross the relay end-to-end encrypted — helm seals each bundle to
+// cross the relay end-to-end encrypted — coxswain seals each bundle to
 // the user's key and only the user's device decrypts it (DESIGN §8).
 // A compromised remote beacon yields traffic metadata, never user
 // profiles, and holds no CA key, so it cannot mint certs.
 //
-// # Pinned beacon↔helm identifiers
+// # Pinned beacon↔coxswain identifiers
 //
 // The metadata keys, the delegation cert Organization, and the
-// backend SNI are part of the beacon↔helm contract helm owns and
-// pins in helm/BUILD.md. See proxy.go for the exact values.
+// backend SNI are part of the beacon↔coxswain contract coxswain owns and
+// pins in coxswain/BUILD.md. See proxy.go for the exact values.
 package relay
 
 import (
@@ -62,8 +62,8 @@ import (
 )
 
 // defaultBackendServerName is the SNI / leaf CN the relay expects on
-// helm's gRPC-leg server certificate. Pinned — see helm/BUILD.md.
-const defaultBackendServerName = "helm-grpc"
+// coxswain's gRPC-leg server certificate. Pinned — see coxswain/BUILD.md.
+const defaultBackendServerName = "coxswain-grpc"
 
 // maxMsgSize bounds a single forwarded gRPC message. Profile bundles
 // are kilobytes; the ceiling is generous headroom, not a target.
@@ -72,7 +72,7 @@ const maxMsgSize = 16 * 1024 * 1024
 // Config configures a relay. All certificate material is PEM. The two
 // legs carry distinct trust roots because PharosVPN runs two CA
 // intermediates (DESIGN §4): caravel clients present Device-CA leaves,
-// while helm presents a Fleet-CA leaf.
+// while coxswain presents a Fleet-CA leaf.
 type Config struct {
 	// ClientListenAddr is the public address the relay binds for
 	// caravel mTLS clients, e.g. ":8443". Required.
@@ -80,11 +80,11 @@ type Config struct {
 
 	// RelayCertPEM / RelayKeyPEM is the relay's single Fleet-CA leaf.
 	// It is presented on the public listener (server-auth) and on the
-	// helm backend leg (client-auth), so it MUST carry both the
+	// coxswain backend leg (client-auth), so it MUST carry both the
 	// ServerAuth and ClientAuth EKUs and Organization="PharosVPN
-	// Relay" — helm's auth path keys delegation off that Organization.
-	// One cert for both legs is the pinned beacon↔helm contract
-	// (helm/BUILD.md). Required.
+	// Relay" — coxswain's auth path keys delegation off that Organization.
+	// One cert for both legs is the pinned beacon↔coxswain contract
+	// (coxswain/BUILD.md). Required.
 	RelayCertPEM []byte
 	RelayKeyPEM  []byte
 
@@ -92,15 +92,15 @@ type Config struct {
 	// certificates — the Device CA. Required.
 	ClientTrustPEM []byte
 
-	// BackendTrustPEM is the CA pool used to verify helm's gRPC-leg
+	// BackendTrustPEM is the CA pool used to verify coxswain's gRPC-leg
 	// server certificate — the Fleet CA. Required.
 	BackendTrustPEM []byte
 
-	// BackendServerName is the SNI / verification name for the helm
-	// dial. Defaults to "helm-grpc".
+	// BackendServerName is the SNI / verification name for the coxswain
+	// dial. Defaults to "coxswain-grpc".
 	BackendServerName string
 
-	// BackendDialer returns a transport to helm's gRPC server. It is
+	// BackendDialer returns a transport to coxswain's gRPC server. It is
 	// invoked once per backend connection (and again by gRPC on
 	// reconnect). Required.
 	//
@@ -132,7 +132,7 @@ func (c *Config) validate() error {
 }
 
 // Relay is a running relay: a public mTLS listener, the transparent
-// gRPC server, and the single backend connection to helm. Construct
+// gRPC server, and the single backend connection to coxswain. Construct
 // it with Start and tear it down with Stop.
 type Relay struct {
 	listener net.Listener
@@ -142,7 +142,7 @@ type Relay struct {
 }
 
 // Start binds the public listener, opens the backend connection to
-// helm, and begins serving. It returns once the listener is bound;
+// coxswain, and begins serving. It returns once the listener is bound;
 // streams are served on a background goroutine. The backend dial is
 // lazy — gRPC connects on the first forwarded RPC.
 func Start(cfg Config) (*Relay, error) {
@@ -217,7 +217,7 @@ func (r *Relay) Stop() {
 // presents its Fleet-CA leaf and accepts caravel clients with or
 // without a certificate: pre-enrolment devices have no Device-CA leaf
 // yet, so the relay must let them complete the handshake and defer
-// the identity decision to helm. Any certificate that IS presented
+// the identity decision to coxswain. Any certificate that IS presented
 // must chain to the Device CA.
 func buildClientTLS(cfg Config) (*tls.Config, error) {
 	cert, err := tls.X509KeyPair(cfg.RelayCertPEM, cfg.RelayKeyPEM)
@@ -239,10 +239,10 @@ func buildClientTLS(cfg Config) (*tls.Config, error) {
 	}, nil
 }
 
-// dialBackend opens the single long-lived gRPC connection to helm.
+// dialBackend opens the single long-lived gRPC connection to coxswain.
 // Every forwarded stream multiplexes over it. The connection always
 // rides Config.BackendDialer (an in-memory pipe or a tunnel
-// substream) — the relay never dials helm by address, so the gRPC
+// substream) — the relay never dials coxswain by address, so the gRPC
 // target is an inert passthrough placeholder.
 func dialBackend(cfg Config) (*grpc.ClientConn, error) {
 	cert, err := tls.X509KeyPair(cfg.RelayCertPEM, cfg.RelayKeyPEM)

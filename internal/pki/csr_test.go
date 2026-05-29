@@ -88,7 +88,7 @@ func TestGenerateCSRIdempotent(t *testing.T) {
 }
 
 // TestGenerateCSRPlainSubject confirms the CSR does not self-assert the
-// delegation Organization — helm is the sole authority on relay
+// delegation Organization — coxswain is the sole authority on relay
 // identity and assigns it at signing time.
 func TestGenerateCSRPlainSubject(t *testing.T) {
 	res, err := GenerateCSR(filepath.Join(t.TempDir(), "relay.key"))
@@ -101,7 +101,7 @@ func TestGenerateCSRPlainSubject(t *testing.T) {
 			csr.Subject.Organization)
 	}
 	if len(csr.DNSNames) != 0 {
-		t.Errorf("CSR carries SANs %v; helm sets the hostname", csr.DNSNames)
+		t.Errorf("CSR carries SANs %v; coxswain sets the hostname", csr.DNSNames)
 	}
 }
 

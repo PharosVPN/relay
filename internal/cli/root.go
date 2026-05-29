@@ -2,10 +2,10 @@
 // Copyright (C) 2026 The PharosVPN Authors
 
 // Package cli wires up the beacon command-line interface — `gen-csr`
-// and `run`, which form the helm↔beacon relay-enrolment contract, plus
-// `version`. The embedded relay is not a CLI command: helm imports
+// and `run`, which form the coxswain↔beacon relay-enrolment contract, plus
+// `version`. The embedded relay is not a CLI command: coxswain imports
 // github.com/PharosVPN/beacon/relay and runs it in-process (see
-// docs/HELM-INTEGRATION.md).
+// docs/COXSWAIN-INTEGRATION.md).
 package cli
 
 import (
@@ -27,9 +27,9 @@ func newRootCmd() *cobra.Command {
 		Short: "PharosVPN relay",
 		Long: "beacon — the PharosVPN relay.\n\n" +
 			"beacon is a stateless, public-facing transparent gRPC proxy. It\n" +
-			"terminates client mTLS and forwards opaque gRPC streams to a helm\n" +
+			"terminates client mTLS and forwards opaque gRPC streams to a coxswain\n" +
 			"controller that has no public IP and no inbound ports. It holds no\n" +
-			"database and makes no policy decisions — helm does all of that.",
+			"database and makes no policy decisions — coxswain does all of that.",
 		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,

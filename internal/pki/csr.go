@@ -6,16 +6,16 @@
 // certificate signing request.
 //
 // The relay's private key is generated here and never leaves the host.
-// helm signs the CSR with the Fleet CA and pushes back the relay
+// coxswain signs the CSR with the Fleet CA and pushes back the relay
 // certificate and the two trust anchors over SSH (DESIGN §5, decision
 // 14 — CSR-over-SSH, no bootstrap token).
 //
-// The CSR is deliberately plain: it carries only the public key. helm
+// The CSR is deliberately plain: it carries only the public key. coxswain
 // is the sole authority on the relay's identity and overrides the
 // subject and SANs when it signs — Subject O="PharosVPN Relay" (the
 // pinned delegation marker, which a relay host must not self-assert),
 // dual ServerAuth+ClientAuth EKU, and the public-endpoint DNS SAN. See
-// helm/BUILD.md, "Relay enrollment contract".
+// coxswain/BUILD.md, "Relay enrollment contract".
 package pki
 
 import (
@@ -35,7 +35,7 @@ import (
 // its owner. It never leaves the host.
 const keyFileMode = 0o600
 
-// csrSubject is a human-readable label only. helm ignores the CSR
+// csrSubject is a human-readable label only. coxswain ignores the CSR
 // subject entirely and assigns the real identity at signing time —
 // crucially Organization, which carries the delegation marker and must
 // not be self-asserted by the relay host.
@@ -43,7 +43,7 @@ var csrSubject = pkix.Name{CommonName: "pharos-beacon-relay"}
 
 // CSRResult is the outcome of GenerateCSR.
 type CSRResult struct {
-	// CSRPEM is the PEM-encoded PKCS#10 certificate request, for helm
+	// CSRPEM is the PEM-encoded PKCS#10 certificate request, for coxswain
 	// to sign.
 	CSRPEM []byte
 	// KeyGenerated reports whether a new private key was created. It is

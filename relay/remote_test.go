@@ -54,17 +54,17 @@ func clientTLS(t *testing.T, certPEM, keyPEM, trustPEM []byte, serverName string
 	}
 }
 
-// TestRemoteRelay exercises the remote transport end to end: helm
+// TestRemoteRelay exercises the remote transport end to end: coxswain
 // dials OUT to the relay's tunnel listener, the relay forwards each
 // caravel RPC as a yamux substream back through that one connection,
-// and helm serves its gRPC server on the multiplexed substreams.
+// and coxswain serves its gRPC server on the multiplexed substreams.
 func TestRemoteRelay(t *testing.T) {
 	p := newPKI(t)
-	helm := newFakeHelm(t, p.helmCertPEM, p.helmKeyPEM, p.fleetCA.certPEM)
+	coxswain := newFakeCoxswain(t, p.coxswainCertPEM, p.coxswainKeyPEM, p.fleetCA.certPEM)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// beacon side: a TLS tunnel listener helm dials into.
+	// beacon side: a TLS tunnel listener coxswain dials into.
 	tcpLis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("tunnel listen: %v", err)
@@ -73,16 +73,16 @@ func TestRemoteRelay(t *testing.T) {
 		serverTLS(t, p.relayCertPEM, p.relayKeyPEM, p.fleetCA.certPEM))
 	tunnelAddr := tcpLis.Addr().String()
 
-	// helm side: dial OUT and serve the gRPC server on each session.
-	helmTLS := clientTLS(t, p.helmCertPEM, p.helmKeyPEM, p.fleetCA.certPEM, "beacon")
+	// coxswain side: dial OUT and serve the gRPC server on each session.
+	coxswainTLS := clientTLS(t, p.coxswainCertPEM, p.coxswainKeyPEM, p.fleetCA.certPEM, "beacon")
 	go func() {
-		_ = tunnel.DialAndAcceptLoop(ctx, tunnelAddr, helmTLS,
+		_ = tunnel.DialAndAcceptLoop(ctx, tunnelAddr, coxswainTLS,
 			func(_ context.Context, lis *tunnel.SessionListener) error {
-				return helm.srv.Serve(lis)
+				return coxswain.srv.Serve(lis)
 			}, nil, nil)
 	}()
 
-	// beacon side: accept helm's tunnel connection.
+	// beacon side: accept coxswain's tunnel connection.
 	ctCh := make(chan *tunnel.ClientTunnel, 1)
 	go func() {
 		ct, acceptErr := tunnel.AcceptOne(ctx, tunnelLis)
@@ -104,10 +104,10 @@ func TestRemoteRelay(t *testing.T) {
 		t.Fatal("timed out waiting for the tunnel")
 	}
 
-	// Tear down in reverse: stop helm so DialAndAcceptLoop unblocks,
+	// Tear down in reverse: stop coxswain so DialAndAcceptLoop unblocks,
 	// then cancel ctx so the loop exits, then close the listener.
 	t.Cleanup(func() {
-		helm.srv.Stop()
+		coxswain.srv.Stop()
 		cancel()
 		_ = tunnelLis.Close()
 	})
@@ -133,10 +133,10 @@ func TestRemoteRelay(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unary call over tunnel: %v", err)
 	}
-	if string(resp) != "helm:ping" {
-		t.Errorf("response = %q, want %q", resp, "helm:ping")
+	if string(resp) != "coxswain:ping" {
+		t.Errorf("response = %q, want %q", resp, "coxswain:ping")
 	}
-	if got := helm.metadataValue(deviceFPMetadataKey); got != fingerprintOf(t, p.caravelCertPEM) {
+	if got := coxswain.metadataValue(deviceFPMetadataKey); got != fingerprintOf(t, p.caravelCertPEM) {
 		t.Errorf("device-fp = %q, want verified fingerprint", got)
 	}
 }

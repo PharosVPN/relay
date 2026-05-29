@@ -41,30 +41,30 @@ func (byteCodec) Unmarshal(data []byte, v any) error {
 	return nil
 }
 
-// fakeHelm stands in for helm's gRPC server. It registers no service:
-// an UnknownServiceHandler echoes every frame back with a "helm:"
+// fakeCoxswain stands in for coxswain's gRPC server. It registers no service:
+// an UnknownServiceHandler echoes every frame back with a "coxswain:"
 // prefix and records the metadata of the most recent stream, so a
 // test can assert what the relay forwarded.
-type fakeHelm struct {
+type fakeCoxswain struct {
 	srv *grpc.Server
 
 	mu     sync.Mutex
 	lastMD metadata.MD
 }
 
-// newFakeHelm builds a fakeHelm whose gRPC server requires mTLS:
-// it presents helmCert and verifies client certs against trust.
-func newFakeHelm(t *testing.T, helmCertPEM, helmKeyPEM, trustPEM []byte) *fakeHelm {
+// newFakeCoxswain builds a fakeCoxswain whose gRPC server requires mTLS:
+// it presents coxswainCert and verifies client certs against trust.
+func newFakeCoxswain(t *testing.T, coxswainCertPEM, coxswainKeyPEM, trustPEM []byte) *fakeCoxswain {
 	t.Helper()
-	cert, err := tls.X509KeyPair(helmCertPEM, helmKeyPEM)
+	cert, err := tls.X509KeyPair(coxswainCertPEM, coxswainKeyPEM)
 	if err != nil {
-		t.Fatalf("helm keypair: %v", err)
+		t.Fatalf("coxswain keypair: %v", err)
 	}
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(trustPEM) {
-		t.Fatal("helm trust pool not parseable")
+		t.Fatal("coxswain trust pool not parseable")
 	}
-	h := &fakeHelm{}
+	h := &fakeCoxswain{}
 	h.srv = grpc.NewServer(
 		grpc.Creds(credentials.NewTLS(&tls.Config{
 			Certificates: []tls.Certificate{cert},
@@ -78,7 +78,7 @@ func newFakeHelm(t *testing.T, helmCertPEM, helmKeyPEM, trustPEM []byte) *fakeHe
 	return h
 }
 
-func (h *fakeHelm) handle(_ any, ss grpc.ServerStream) error {
+func (h *fakeCoxswain) handle(_ any, ss grpc.ServerStream) error {
 	md, _ := metadata.FromIncomingContext(ss.Context())
 	h.mu.Lock()
 	h.lastMD = md
@@ -91,7 +91,7 @@ func (h *fakeHelm) handle(_ any, ss grpc.ServerStream) error {
 			}
 			return err
 		}
-		echo := append([]byte("helm:"), b...)
+		echo := append([]byte("coxswain:"), b...)
 		if err := ss.SendMsg(&echo); err != nil {
 			return err
 		}
@@ -100,7 +100,7 @@ func (h *fakeHelm) handle(_ any, ss grpc.ServerStream) error {
 
 // metadataValue returns the first value the last stream carried for
 // key, or "" if absent.
-func (h *fakeHelm) metadataValue(key string) string {
+func (h *fakeCoxswain) metadataValue(key string) string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if v := h.lastMD.Get(key); len(v) > 0 {

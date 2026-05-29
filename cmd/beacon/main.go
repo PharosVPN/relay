@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PharosVPN Authors
 
 // Command beacon is the PharosVPN relay — a stateless, public-facing
-// transparent gRPC proxy that lets end-user clients reach a helm controller
+// transparent gRPC proxy that lets end-user clients reach a coxswain controller
 // that has no public IP and no inbound ports (DESIGN §2, §3).
 package main
 

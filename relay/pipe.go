@@ -11,7 +11,7 @@ import (
 )
 
 // Pipe is the embedded-mode transport: an in-memory net.Conn pair
-// factory that is both a net.Listener and a dialer. helm serves its
+// factory that is both a net.Listener and a dialer. coxswain serves its
 // gRPC server on the Pipe (it implements net.Listener) and sets
 // Config.BackendDialer to Pipe.DialContext. Each backend connection
 // the relay opens becomes a net.Pipe whose other end is handed to the

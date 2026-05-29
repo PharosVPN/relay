@@ -17,19 +17,19 @@ import (
 
 // pki holds the certificate material an integration test needs. It
 // models the two-intermediate PKI of DESIGN §4: caravel devices carry
-// Device-CA leaves; the relay and helm carry Fleet-CA leaves.
+// Device-CA leaves; the relay and coxswain carry Fleet-CA leaves.
 type pki struct {
 	fleetCA  *testCA
 	deviceCA *testCA
 
 	// relayCert is the Fleet-CA relay cert. It is presented on the
-	// public listener (server-auth) and on the helm backend leg
+	// public listener (server-auth) and on the coxswain backend leg
 	// (client-auth), and carries O="PharosVPN Relay".
 	relayCertPEM, relayKeyPEM []byte
 
-	// helmCert is helm's Fleet-CA leaf: gRPC-leg server cert
-	// (CN/SAN "helm-grpc") and, for remote mode, tunnel client cert.
-	helmCertPEM, helmKeyPEM []byte
+	// coxswainCert is coxswain's Fleet-CA leaf: gRPC-leg server cert
+	// (CN/SAN "coxswain-grpc") and, for remote mode, tunnel client cert.
+	coxswainCertPEM, coxswainKeyPEM []byte
 
 	// caravelCert is a Device-CA device leaf.
 	caravelCertPEM, caravelKeyPEM []byte
@@ -44,7 +44,7 @@ func newPKI(t *testing.T) *pki {
 		cn: "beacon-relay", org: delegationOrg, dns: []string{"beacon"},
 		server: true, client: true,
 	})
-	p.helmCertPEM, p.helmKeyPEM = fleet.leaf(t, leafOpts{
+	p.coxswainCertPEM, p.coxswainKeyPEM = fleet.leaf(t, leafOpts{
 		cn: defaultBackendServerName, org: delegationOrg,
 		dns: []string{defaultBackendServerName}, server: true, client: true,
 	})
@@ -93,17 +93,17 @@ func fingerprintOf(t *testing.T, certPEM []byte) string {
 }
 
 // TestEmbeddedRelay exercises the embedded transport end to end: a
-// caravel client → relay → helm over real mTLS, with helm reached
+// caravel client → relay → coxswain over real mTLS, with coxswain reached
 // through an in-memory Pipe. It asserts the payload round-trips and
 // that metadata sanitization holds.
 func TestEmbeddedRelay(t *testing.T) {
 	p := newPKI(t)
-	helm := newFakeHelm(t, p.helmCertPEM, p.helmKeyPEM, p.fleetCA.certPEM)
+	coxswain := newFakeCoxswain(t, p.coxswainCertPEM, p.coxswainKeyPEM, p.fleetCA.certPEM)
 	pipe := NewPipe()
 	t.Cleanup(func() { _ = pipe.Close() })
 
-	go func() { _ = helm.srv.Serve(pipe) }()
-	t.Cleanup(helm.srv.Stop)
+	go func() { _ = coxswain.srv.Serve(pipe) }()
+	t.Cleanup(coxswain.srv.Stop)
 
 	r, err := Start(p.relayConfig("127.0.0.1:0", pipe.DialContext))
 	if err != nil {
@@ -129,36 +129,36 @@ func TestEmbeddedRelay(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unary call: %v", err)
 	}
-	if string(resp) != "helm:ping" {
-		t.Errorf("response = %q, want %q", resp, "helm:ping")
+	if string(resp) != "coxswain:ping" {
+		t.Errorf("response = %q, want %q", resp, "coxswain:ping")
 	}
 
 	// The injected fingerprint must be the relay-verified one, not
 	// whatever the client sent.
 	wantFP := fingerprintOf(t, p.caravelCertPEM)
-	if got := helm.metadataValue(deviceFPMetadataKey); got != wantFP {
+	if got := coxswain.metadataValue(deviceFPMetadataKey); got != wantFP {
 		t.Errorf("device-fp = %q, want verified %q", got, wantFP)
 	}
 	// The reserved namespace must be fully stripped.
-	if got := helm.metadataValue("x-pharos-evil"); got != "" {
+	if got := coxswain.metadataValue("x-pharos-evil"); got != "" {
 		t.Errorf("spoofed x-pharos-evil survived: %q", got)
 	}
 	// Non-reserved metadata must pass through untouched.
-	if got := helm.metadataValue("pharos-session"); got != "tok-abc" {
+	if got := coxswain.metadataValue("pharos-session"); got != "tok-abc" {
 		t.Errorf("pharos-session = %q, want %q", got, "tok-abc")
 	}
 }
 
 // TestEmbeddedRelayPreEnrolment confirms a client with no certificate
-// — a device that has not enrolled yet — still reaches helm, just
+// — a device that has not enrolled yet — still reaches coxswain, just
 // without an injected fingerprint.
 func TestEmbeddedRelayPreEnrolment(t *testing.T) {
 	p := newPKI(t)
-	helm := newFakeHelm(t, p.helmCertPEM, p.helmKeyPEM, p.fleetCA.certPEM)
+	coxswain := newFakeCoxswain(t, p.coxswainCertPEM, p.coxswainKeyPEM, p.fleetCA.certPEM)
 	pipe := NewPipe()
 	t.Cleanup(func() { _ = pipe.Close() })
-	go func() { _ = helm.srv.Serve(pipe) }()
-	t.Cleanup(helm.srv.Stop)
+	go func() { _ = coxswain.srv.Serve(pipe) }()
+	t.Cleanup(coxswain.srv.Stop)
 
 	r, err := Start(p.relayConfig("127.0.0.1:0", pipe.DialContext))
 	if err != nil {
@@ -177,10 +177,10 @@ func TestEmbeddedRelayPreEnrolment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unary call: %v", err)
 	}
-	if string(resp) != "helm:enrol" {
-		t.Errorf("response = %q, want %q", resp, "helm:enrol")
+	if string(resp) != "coxswain:enrol" {
+		t.Errorf("response = %q, want %q", resp, "coxswain:enrol")
 	}
-	if got := helm.metadataValue(deviceFPMetadataKey); got != "" {
+	if got := coxswain.metadataValue(deviceFPMetadataKey); got != "" {
 		t.Errorf("device-fp injected for a certless client: %q", got)
 	}
 }
@@ -189,11 +189,11 @@ func TestEmbeddedRelayPreEnrolment(t *testing.T) {
 // must forward frames in both directions without decoding them.
 func TestEmbeddedRelayBidiStream(t *testing.T) {
 	p := newPKI(t)
-	helm := newFakeHelm(t, p.helmCertPEM, p.helmKeyPEM, p.fleetCA.certPEM)
+	coxswain := newFakeCoxswain(t, p.coxswainCertPEM, p.coxswainKeyPEM, p.fleetCA.certPEM)
 	pipe := NewPipe()
 	t.Cleanup(func() { _ = pipe.Close() })
-	go func() { _ = helm.srv.Serve(pipe) }()
-	t.Cleanup(helm.srv.Stop)
+	go func() { _ = coxswain.srv.Serve(pipe) }()
+	t.Cleanup(coxswain.srv.Stop)
 
 	r, err := Start(p.relayConfig("127.0.0.1:0", pipe.DialContext))
 	if err != nil {
@@ -212,7 +212,7 @@ func TestEmbeddedRelayBidiStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new stream: %v", err)
 	}
-	for i, want := range []string{"helm:a", "helm:b", "helm:c"} {
+	for i, want := range []string{"coxswain:a", "coxswain:b", "coxswain:c"} {
 		send := []byte{byte('a' + i)}
 		if err := stream.SendMsg(&send); err != nil {
 			t.Fatalf("send %d: %v", i, err)

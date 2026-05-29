@@ -1,39 +1,39 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PharosVPN Authors
 
-// Package tunnel is the reverse-tunnel transport between helm (the
+// Package tunnel is the reverse-tunnel transport between coxswain (the
 // controller) and a remote beacon relay.
 //
 // Why it exists: beacon is the only public surface (clients dial it).
-// helm lives wherever it's safe — home LAN, private VPC, laptop —
+// coxswain lives wherever it's safe — home LAN, private VPC, laptop —
 // behind whatever NAT / firewall, with zero inbound ports (DESIGN §2).
-// Without this package, a remote beacon would have to dial INTO helm's
-// mTLS port, meaning helm needs a public IP + open inbound. That's the
-// anti-pattern this fixes: helm dials OUT to beacon.
+// Without this package, a remote beacon would have to dial INTO coxswain's
+// mTLS port, meaning coxswain needs a public IP + open inbound. That's the
+// anti-pattern this fixes: coxswain dials OUT to beacon.
 //
 // Wire direction:
 //
-//	helm  ── TCP+mTLS ──▶  beacon:tunnel-port   (long-lived, retried)
+//	coxswain  ── TCP+mTLS ──▶  beacon:tunnel-port   (long-lived, retried)
 //	  (yamux Server, accepts)        (yamux Client, opens)
 //
-//	client ── mTLS ──▶ beacon:public ── yamux substream ──▶ helm
-//	                   (package relay)               (helm's grpc.Server)
+//	client ── mTLS ──▶ beacon:public ── yamux substream ──▶ coxswain
+//	                   (package relay)               (coxswain's grpc.Server)
 //
-// helm's grpc.Server doesn't know the tunnel exists. Every accepted
-// yamux substream on the helm side looks like an incoming TCP conn to
+// coxswain's grpc.Server doesn't know the tunnel exists. Every accepted
+// yamux substream on the coxswain side looks like an incoming TCP conn to
 // it — [SessionListener] adapts the yamux session to a standard
 // net.Listener.
 //
-// This package is TLS-agnostic: helm builds the *tls.Config it dials
+// This package is TLS-agnostic: coxswain builds the *tls.Config it dials
 // with, and beacon wraps its tunnel listener with tls.NewListener
 // before handing it to AcceptOne. The tunnel leg is mutually
-// authenticated — helm presents a Fleet-CA leaf carrying
+// authenticated — coxswain presents a Fleet-CA leaf carrying
 // Organization="PharosVPN Relay" (the pinned delegation marker, see
 // package relay), beacon presents its Fleet-CA relay cert. The inner
 // gRPC stream that rides the substreams is independently mTLS'd; that
-// inner cert is what helm's gRPC auth interceptor reads for delegation.
+// inner cert is what coxswain's gRPC auth interceptor reads for delegation.
 //
-// Scope for v1: one helm per beacon, one beacon per helm. Multi-tenant
+// Scope for v1: one coxswain per beacon, one beacon per coxswain. Multi-tenant
 // fan-in (several controllers behind one relay) needs a routing layer
 // on the relay side and is deferred.
 package tunnel
@@ -55,8 +55,8 @@ import (
 // Closing the listener closes the underlying session; Addr returns
 // the session's LocalAddr.
 //
-// Used on the helm side: the outbound tunnel conn is wrapped in
-// yamux.Server (helm accepts substreams); this listener hands those
+// Used on the coxswain side: the outbound tunnel conn is wrapped in
+// yamux.Server (coxswain accepts substreams); this listener hands those
 // substreams to grpc.Server.Serve as if they were regular TCP
 // accepts.
 type SessionListener struct {
@@ -103,7 +103,7 @@ func (l *SessionListener) Done() <-chan struct{} { return l.closed }
 
 // Observer is the optional event sink used by DialAndAcceptLoop to
 // surface state transitions to the caller. All fields are optional;
-// nil means "don't notify." Used by helm to keep per-relay metrics
+// nil means "don't notify." Used by coxswain to keep per-relay metrics
 // (attempt counter, last error, last-attempt timestamp) that the
 // admin UI reads back.
 //
@@ -143,7 +143,7 @@ var defaultLoopOpts = loopOpts{
 	writeTimeout:    10 * time.Second,
 }
 
-// DialAndAcceptLoop is the helm-side entry point. It dials the relay
+// DialAndAcceptLoop is the coxswain-side entry point. It dials the relay
 // over TLS, wraps the conn in yamux.Server, hands the resulting
 // SessionListener to [onListener], and reconnects forever until ctx
 // is cancelled.
@@ -309,20 +309,20 @@ func capBackoff(v, max time.Duration) time.Duration {
 
 // ── Relay side ──────────────────────────────────────────────────────
 
-// ClientTunnel is the relay-side handle to the helm tunnel. Open
-// returns a new substream ("dial" helm) for each client RPC that
+// ClientTunnel is the relay-side handle to the coxswain tunnel. Open
+// returns a new substream ("dial" coxswain) for each client RPC that
 // arrives on the relay's public listener.
 //
-// Lifecycle: created by AcceptOne when helm dials in; replaced
-// (atomically) if helm reconnects. Consumers should call Open on the
+// Lifecycle: created by AcceptOne when coxswain dials in; replaced
+// (atomically) if coxswain reconnects. Consumers should call Open on the
 // current handle on every RPC instead of caching a substream, so a
 // fresh reconnect is picked up cleanly.
 type ClientTunnel struct {
 	sess *yamux.Session
 }
 
-// Open returns the next substream to helm as a net.Conn. Zero
-// buffering on creation — helm's grpc.Server.Serve accepts it within
+// Open returns the next substream to coxswain as a net.Conn. Zero
+// buffering on creation — coxswain's grpc.Server.Serve accepts it within
 // milliseconds. If the session is already torn down, returns a
 // closed-session error from yamux.
 func (t *ClientTunnel) Open(ctx context.Context) (net.Conn, error) {
@@ -345,7 +345,7 @@ func (t *ClientTunnel) Closed() bool {
 
 // Done returns a channel closed when the tunnel tears down, by either
 // side. A relay supervisor selects on it to know when to accept the
-// next helm connection, rather than polling Closed.
+// next coxswain connection, rather than polling Closed.
 func (t *ClientTunnel) Done() <-chan struct{} {
 	if t == nil || t.sess == nil {
 		ch := make(chan struct{})
@@ -355,7 +355,7 @@ func (t *ClientTunnel) Done() <-chan struct{} {
 	return t.sess.CloseChan()
 }
 
-// AcceptOne accepts ONE helm TLS connection from [lis], wraps it in
+// AcceptOne accepts ONE coxswain TLS connection from [lis], wraps it in
 // yamux.Client mode, and returns the resulting ClientTunnel. The
 // relay caller holds this tunnel handle and opens a substream per
 // client RPC.

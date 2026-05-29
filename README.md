@@ -4,7 +4,7 @@
 
 **`beacon` is the PharosVPN relay.** It is a stateless, public, mTLS-terminating
 proxy that lets end-user clients reach a controller that has no public presence.
-The controller (`helm`) stays behind NAT; `beacon` is the only public ingress
+The controller (`coxswain`) stays behind NAT; `beacon` is the only public ingress
 for clients.
 
 Part of the [PharosVPN](https://github.com/PharosVPN) platform — see
@@ -13,12 +13,12 @@ Part of the [PharosVPN](https://github.com/PharosVPN) platform — see
 ## Role
 
 - **Public ingress for clients only.** Terminates client mTLS, forwards their
-  gRPC streams to `helm`.
-- **Stateless.** No database. Every identity lookup is delegated to `helm`.
+  gRPC streams to `coxswain`.
+- **Stateless.** No database. Every identity lookup is delegated to `coxswain`.
 - **Sanitizing.** Strips spoofable client metadata; injects exactly one trusted
   value — the verified device fingerprint.
-- **Two transports to `helm`:** *embedded* (in-process inside `helm`) or
-  *remote reverse tunnel* (`helm` dials out to a public `beacon`). Identical
+- **Two transports to `coxswain`:** *embedded* (in-process inside `coxswain`) or
+  *remote reverse tunnel* (`coxswain` dials out to a public `beacon`). Identical
   trust either way.
 - **Sees only ciphertext.** Profile bundles cross `beacon` end-to-end encrypted;
   a compromised remote `beacon` host cannot read user profiles.
@@ -31,12 +31,12 @@ Go · transparent gRPC proxy · reverse-tunnel transport (multiplexed) · mTLS.
 
 - [`relay/`](relay/) — the embeddable relay: the transparent proxy, the public
   mTLS listener, and the in-memory `Pipe` for embedded mode.
-- [`tunnel/`](tunnel/) — the reverse-tunnel transport `helm` dials out over.
+- [`tunnel/`](tunnel/) — the reverse-tunnel transport `coxswain` dials out over.
 - [`cmd/beacon`](cmd/beacon/) — the relay binary: `gen-csr` (SSH enrolment)
   and `run` (the remote relay).
 
-`helm` embeds a relay in-process by importing the `relay` package — see
-[docs/HELM-INTEGRATION.md](docs/HELM-INTEGRATION.md).
+`coxswain` embeds a relay in-process by importing the `relay` package — see
+[docs/COXSWAIN-INTEGRATION.md](docs/COXSWAIN-INTEGRATION.md).
 
 ## Build & deploy
 

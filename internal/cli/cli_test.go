@@ -12,7 +12,7 @@ import (
 )
 
 // TestVersionCommand confirms `beacon version` prints the build version and
-// nothing else — helm parses this output verbatim after an SSH install.
+// nothing else — coxswain parses this output verbatim after an SSH install.
 func TestVersionCommand(t *testing.T) {
 	root := newRootCmd()
 	var out bytes.Buffer
@@ -65,7 +65,7 @@ func TestLoadMaterialComplete(t *testing.T) {
 }
 
 // TestGenCSRCommand confirms `beacon gen-csr` writes the relay key into
-// the config dir and prints only a CSR PEM to stdout — helm captures
+// the config dir and prints only a CSR PEM to stdout — coxswain captures
 // that stdout verbatim over SSH.
 func TestGenCSRCommand(t *testing.T) {
 	dir := t.TempDir()

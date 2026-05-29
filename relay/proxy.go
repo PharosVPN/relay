@@ -19,10 +19,10 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-// Pinned beacon↔helm identifiers. helm owns the relayed-client
-// contract and pins these in helm/BUILD.md ("Pinned beacon ↔ helm
-// identifiers"); helm's M6b proto and PKI use them exactly. Change
-// them only in lockstep with helm.
+// Pinned beacon↔coxswain identifiers. coxswain owns the relayed-client
+// contract and pins these in coxswain/BUILD.md ("Pinned beacon ↔ coxswain
+// identifiers"); coxswain's M6b proto and PKI use them exactly. Change
+// them only in lockstep with coxswain.
 const (
 	// deviceFPMetadataKey is the one trusted metadata value the relay
 	// injects, after verifying the caravel client's Device-CA leaf.
@@ -36,12 +36,12 @@ const (
 	clientMetadataStrip = "x-pharos-"
 
 	// delegationOrg is the Organization on the relay's backend client
-	// leaf. helm's gRPC auth path recognises it and reads identity
+	// leaf. coxswain's gRPC auth path recognises it and reads identity
 	// from the injected header instead of doing its own device lookup.
 	delegationOrg = "PharosVPN Relay"
 )
 
-// director forwards every inbound gRPC stream to helm over the single
+// director forwards every inbound gRPC stream to coxswain over the single
 // backend connection. It is registered as the gRPC server's
 // UnknownServiceHandler, so it catches every (service, method) pair —
 // the relay registers no services of its own.
@@ -78,13 +78,13 @@ func (d *director) handle(_ any, ss grpc.ServerStream) error {
 }
 
 // buildOutgoingCtx sanitises inbound metadata and injects the one
-// value helm trusts the relay for: x-pharos-device-fp. Every
+// value coxswain trusts the relay for: x-pharos-device-fp. Every
 // x-pharos-* key the client might have set is stripped first, so a
 // malicious client cannot spoof identity by setting its own header.
 //
 // Pre-cert callers (enrolment, before the device holds a Device-CA
 // leaf) get the same sanitation minus the fingerprint injection —
-// helm's anonymous-policy path handles them on the other end.
+// coxswain's anonymous-policy path handles them on the other end.
 func buildOutgoingCtx(in context.Context) context.Context {
 	inMD, _ := metadata.FromIncomingContext(in)
 	outMD := make(metadata.MD, len(inMD)+1)
@@ -156,7 +156,7 @@ func pipeFrames(in grpc.ServerStream, out grpc.ClientStream) error {
 }
 
 // fingerprintFromPeer extracts the SHA-256 fingerprint of the peer's
-// leaf cert. Same shape helm uses (sha256:<hex-of-PEM>) so helm and
+// leaf cert. Same shape coxswain uses (sha256:<hex-of-PEM>) so coxswain and
 // beacon agree on the value without sharing code.
 func fingerprintFromPeer(ctx context.Context) (string, error) {
 	p, ok := peer.FromContext(ctx)

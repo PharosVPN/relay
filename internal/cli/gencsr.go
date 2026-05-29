@@ -15,7 +15,7 @@ import (
 // prints a PEM-encoded certificate signing request to stdout.
 //
 // This is the first step of SSH enrolment (DESIGN §5, decision 14):
-// helm runs `beacon gen-csr` over SSH, captures the CSR from stdout,
+// coxswain runs `beacon gen-csr` over SSH, captures the CSR from stdout,
 // signs it with the Fleet CA, and pushes relay.crt, fleet-ca.crt and
 // device-ca.crt back. The relay's private key is written to relay.key
 // and never leaves the host.
@@ -26,7 +26,7 @@ func newGenCSRCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "gen-csr",
-		Short: "Generate the relay keypair and print a CSR for helm to sign",
+		Short: "Generate the relay keypair and print a CSR for coxswain to sign",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			keyPath := filepath.Join(configDir, fileRelayKey)
@@ -36,7 +36,7 @@ func newGenCSRCmd() *cobra.Command {
 			}
 
 			// Diagnostics go to stderr; stdout carries only the CSR so
-			// helm can capture it cleanly over SSH. A failed diagnostic
+			// coxswain can capture it cleanly over SSH. A failed diagnostic
 			// write must not fail gen-csr itself.
 			if res.KeyGenerated {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "beacon: generated relay key at %s\n", keyPath)

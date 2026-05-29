@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newVersionCmd prints the relay version to stdout. helm records the
+// newVersionCmd prints the relay version to stdout. coxswain records the
 // installed relay version after an SSH install or update (DESIGN §5).
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
