@@ -37,6 +37,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(
 		newGenCSRCmd(),
 		newRunCmd(),
+		newEgressCmd(),
 		newVersionCmd(),
 	)
 	return root
