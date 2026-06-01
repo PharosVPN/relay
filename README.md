@@ -52,4 +52,4 @@ relay enrolment (`gen-csr`), and static-binary packaging are built. See
 
 ## License
 
-AGPL-3.0-or-later. Contributions under the DCO (`git commit -s`).
+Apache-2.0. Contributions under the DCO (`git commit -s`).

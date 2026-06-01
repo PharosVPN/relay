@@ -30,7 +30,7 @@ operator. Adapt:
 **Rebrand obligation (`docs/BUILD.md` §4):** strip *every* identifier from the
 origin project — package paths, type names, metadata keys, comments,
 filenames. The `beacon` repo must contain zero trace of it. Re-license all
-adapted files to AGPL-3.0.
+adapted files to Apache-2.0.
 
 ## Behaviour
 
