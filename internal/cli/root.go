@@ -38,6 +38,8 @@ func newRootCmd() *cobra.Command {
 		newGenCSRCmd(),
 		newRunCmd(),
 		newEgressCmd(),
+		newOnionKeyCmd(),
+		newOnionCmd(),
 		newVersionCmd(),
 	)
 	return root
