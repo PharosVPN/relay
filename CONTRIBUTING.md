@@ -1,4 +1,4 @@
-# Contributing to beacon
+# Contributing to relay
 
 Thanks for helping build PharosVPN. Before you start, read
 [`docs/DESIGN.md`](https://github.com/PharosVPN/docs/blob/main/DESIGN.md) — the
@@ -30,13 +30,13 @@ and email must be real and match your `git config user.name` / `user.email`.
 
 ## Wire contracts
 
-`beacon` does not own a wire contract. The beacon↔coxswain reverse-tunnel and
+`relay` does not own a wire contract. The relay↔coxswain reverse-tunnel and
 relayed-client protos are owned by `coxswain` and published in `docs/proto/`;
-`beacon` builds against them and never forks them (docs/BUILD.md §3).
+`relay` builds against them and never forks them (docs/BUILD.md §3).
 
 ## Reused code — rebrand obligation
 
-`beacon`'s transparent-proxy and reverse-tunnel machinery is lifted from a
+`relay`'s transparent-proxy and reverse-tunnel machinery is lifted from a
 private predecessor project (docs/BUILD.md §4, DESIGN decision 13). Any further
 lift must strip **every** identifier of the origin project — package paths,
 type names, metadata keys, comments, file names. This repo contains zero trace
@@ -58,7 +58,7 @@ Never commit secrets — not even in test fixtures.
 
 ## Licence
 
-beacon is licensed **Apache-2.0**. Every source file carries the SPDX
+relay is licensed **Apache-2.0**. Every source file carries the SPDX
 header:
 
 ```

@@ -14,9 +14,9 @@
 //
 //   - Embedded: coxswain runs the relay in-process and sets
 //     Config.BackendDialer to a [Pipe], an in-memory net.Conn pair.
-//   - Remote: a beacon binary runs the relay on a public host; coxswain
+//   - Remote: a relay binary runs the relay on a public host; coxswain
 //     dials OUT to it over a reverse tunnel (package
-//     github.com/PharosVPN/beacon/tunnel) and the relay sets
+//     github.com/PharosVPN/relay/tunnel) and the relay sets
 //     Config.BackendDialer to a closure over the tunnel substreams.
 //
 // Either way the backend leg is mutually authenticated gRPC: the
@@ -39,15 +39,15 @@
 // host can read RPC framing and metadata. Profile bundles, however,
 // cross the relay end-to-end encrypted — coxswain seals each bundle to
 // the user's key and only the user's device decrypts it (DESIGN §8).
-// A compromised remote beacon yields traffic metadata, never user
+// A compromised remote relay yields traffic metadata, never user
 // profiles, and holds no CA key, so it cannot mint certs.
 //
-// # Pinned beacon↔coxswain identifiers
+// # Pinned relay↔coxswain identifiers
 //
 // The metadata keys, the delegation cert Organization, and the
-// backend SNI are part of the beacon↔coxswain contract coxswain owns and
+// backend SNI are part of the relay↔coxswain contract coxswain owns and
 // pins in coxswain/BUILD.md. See proxy.go for the exact values.
-package relay
+package core
 
 import (
 	"context"
@@ -83,7 +83,7 @@ type Config struct {
 	// coxswain backend leg (client-auth), so it MUST carry both the
 	// ServerAuth and ClientAuth EKUs and Organization="PharosVPN
 	// Relay" — coxswain's auth path keys delegation off that Organization.
-	// One cert for both legs is the pinned beacon↔coxswain contract
+	// One cert for both legs is the pinned relay↔coxswain contract
 	// (coxswain/BUILD.md). Required.
 	RelayCertPEM []byte
 	RelayKeyPEM  []byte
@@ -182,9 +182,9 @@ func Start(cfg Config) (*Relay, error) {
 
 	r := &Relay{listener: lis, grpc: srv, backend: backend, logf: logf}
 	go func() {
-		logf("[beacon] relay serving caravel clients on %s", lis.Addr())
+		logf("[relay] relay serving caravel clients on %s", lis.Addr())
 		if err := srv.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-			logf("[beacon] relay serve: %v", err)
+			logf("[relay] relay serve: %v", err)
 		}
 	}()
 	return r, nil

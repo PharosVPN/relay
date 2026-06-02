@@ -1,5 +1,5 @@
 # Build output
-/beacon
+/relay
 /dist/
 
 # Relay mTLS material — never committed (DESIGN §4, §5)

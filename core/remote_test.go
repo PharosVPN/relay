@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 The PharosVPN Authors
 
-package relay
+package core
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PharosVPN/beacon/tunnel"
+	"github.com/PharosVPN/relay/tunnel"
 )
 
 // serverTLS builds a TLS server config presenting certPEM and
@@ -64,7 +64,7 @@ func TestRemoteRelay(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// beacon side: a TLS tunnel listener coxswain dials into.
+	// relay side: a TLS tunnel listener coxswain dials into.
 	tcpLis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("tunnel listen: %v", err)
@@ -74,7 +74,7 @@ func TestRemoteRelay(t *testing.T) {
 	tunnelAddr := tcpLis.Addr().String()
 
 	// coxswain side: dial OUT and serve the gRPC server on each session.
-	coxswainTLS := clientTLS(t, p.coxswainCertPEM, p.coxswainKeyPEM, p.fleetCA.certPEM, "beacon")
+	coxswainTLS := clientTLS(t, p.coxswainCertPEM, p.coxswainKeyPEM, p.fleetCA.certPEM, "relay")
 	go func() {
 		_ = tunnel.DialAndAcceptLoop(ctx, tunnelAddr, coxswainTLS,
 			func(_ context.Context, lis *tunnel.SessionListener) error {
@@ -82,7 +82,7 @@ func TestRemoteRelay(t *testing.T) {
 			}, nil, nil)
 	}()
 
-	// beacon side: accept coxswain's tunnel connection.
+	// relay side: accept coxswain's tunnel connection.
 	ctCh := make(chan *tunnel.ClientTunnel, 1)
 	go func() {
 		ct, acceptErr := tunnel.AcceptOne(ctx, tunnelLis)
@@ -123,7 +123,7 @@ func TestRemoteRelay(t *testing.T) {
 	t.Cleanup(r.Stop)
 
 	cc := dialThrough(t, r.Addr().String(),
-		caravelClientTLS(t, p.fleetCA.certPEM, p.caravelCertPEM, p.caravelKeyPEM, "beacon"))
+		caravelClientTLS(t, p.fleetCA.certPEM, p.caravelCertPEM, p.caravelKeyPEM, "relay"))
 	t.Cleanup(func() { _ = cc.Close() })
 
 	callCtx, callCancel := context.WithTimeout(context.Background(), 10*time.Second)

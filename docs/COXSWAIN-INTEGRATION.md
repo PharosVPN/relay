@@ -1,4 +1,4 @@
-# Integrating beacon into coxswain
+# Integrating relay into coxswain
 
 This document is the contract surface `coxswain` builds its **M6b-2** against —
 the embedded relay and the remote-relay dialer (DESIGN §2, §3). It describes
@@ -6,12 +6,12 @@ two public Go packages:
 
 | Package | Import path | Used for |
 |---|---|---|
-| `relay` | `github.com/PharosVPN/beacon/relay` | running a relay (embedded **and** remote) |
-| `tunnel` | `github.com/PharosVPN/beacon/tunnel` | the reverse tunnel — `coxswain` dials a remote relay |
+| `relay` | `github.com/PharosVPN/relay/relay` | running a relay (embedded **and** remote) |
+| `tunnel` | `github.com/PharosVPN/relay/tunnel` | the reverse tunnel — `coxswain` dials a remote relay |
 
-beacon is a **transparent** gRPC proxy. It registers no services and never
+relay is a **transparent** gRPC proxy. It registers no services and never
 decodes a message body, so `coxswain` adds an `AccountSync` RPC without touching
-beacon. beacon carries only ciphertext profile bundles (DESIGN §8).
+relay. relay carries only ciphertext profile bundles (DESIGN §8).
 
 Both transports are **identical trust** — the only difference is the
 `relay.Config.BackendDialer` (DESIGN §2).
@@ -25,7 +25,7 @@ reaches it over an in-memory pipe — no TCP, no loopback hop. mTLS still runs
 over the pipe, so the embedded and remote auth paths are one path.
 
 ```go
-import "github.com/PharosVPN/beacon/relay"
+import "github.com/PharosVPN/relay/relay"
 
 // 1. An in-memory listener+dialer pair.
 pipe := relay.NewPipe()
@@ -59,18 +59,18 @@ The admin UI's "embedded relay" toggle (DESIGN §2) maps to `Start` / `Stop`.
 
 ## 2. Remote relay (coxswain dials out)
 
-A `beacon` binary runs the relay on a public host. `coxswain` keeps **zero inbound
+A `relay` binary runs the relay on a public host. `coxswain` keeps **zero inbound
 ports** and dials OUT to it; each caravel RPC rides a multiplexed substream
 back through that one connection.
 
 `coxswain` uses the `tunnel` package:
 
 ```go
-import "github.com/PharosVPN/beacon/tunnel"
+import "github.com/PharosVPN/relay/tunnel"
 
 err := tunnel.DialAndAcceptLoop(
     ctx,
-    "beacon.example.net:8444",  // the remote beacon's --tunnel-addr
+    "relay.example.net:8444",  // the remote relay's --tunnel-addr
     coxswainTunnelTLS,              // *tls.Config — see §3
     func(_ context.Context, lis *tunnel.SessionListener) error {
         // Each yamux substream looks like an inbound TCP conn. Serve
@@ -89,7 +89,7 @@ every transition is reported through the optional `Observer` so the admin UI
 can show attempts / last error / uptime. To stop it: cancel `ctx`, then
 `coxswainGRPCServer.Stop()` to unblock the in-flight `Serve`.
 
-`coxswain` does **not** import `relay` for remote mode — the remote `beacon`
+`coxswain` does **not** import `relay` for remote mode — the remote `relay`
 binary owns the relay; `coxswain` owns only the dial side.
 
 ---
@@ -97,7 +97,7 @@ binary owns the relay; `coxswain` owns only the dial side.
 ## 3. PKI — what coxswain must issue
 
 PharosVPN runs two CA intermediates (DESIGN §4). The relay legs use them as
-follows. `coxswain` issues every certificate; beacon stores no CA key.
+follows. `coxswain` issues every certificate; relay stores no CA key.
 
 | Leg | Server cert | Client cert | Trust root |
 |---|---|---|---|
@@ -111,7 +111,7 @@ delegation. Embedded mode runs the same inner mTLS over the pipe.
 
 ### Pinned identifiers
 
-Confirmed during beacon R1, pinned in `coxswain/BUILD.md`:
+Confirmed during relay R1, pinned in `coxswain/BUILD.md`:
 
 | Role | Value |
 |---|---|
@@ -120,7 +120,7 @@ Confirmed during beacon R1, pinned in `coxswain/BUILD.md`:
 | Backend delegation cert `Organization` | `PharosVPN Relay` |
 | coxswain gRPC-leg leaf `CN` / backend SNI | `coxswain-grpc` |
 
-beacon strips **every** inbound metadata key under `x-pharos-` and injects
+relay strips **every** inbound metadata key under `x-pharos-` and injects
 exactly one trusted value — `x-pharos-device-fp: sha256:<hex>`, the SHA-256 of
 the PEM-encoded caravel leaf. coxswain's gRPC auth path: when the peer cert
 carries `O="PharosVPN Relay"`, trust `x-pharos-device-fp` and do the
@@ -142,5 +142,5 @@ Fleet-CA leaf carrying
   off this Organization.
 
 coxswain's M6b PKI issues exactly that. `relay.Config` takes it as `RelayCertPEM`
-/ `RelayKeyPEM`; the remote `beacon run` binary reads it as `relay.crt` /
-`relay.key`. beacon stores no CA key — coxswain owns all issuance.
+/ `RelayKeyPEM`; the remote `relay run` binary reads it as `relay.crt` /
+`relay.key`. relay stores no CA key — coxswain owns all issuance.

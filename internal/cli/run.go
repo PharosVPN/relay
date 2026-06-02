@@ -16,21 +16,21 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/PharosVPN/beacon/relay"
-	"github.com/PharosVPN/beacon/tunnel"
+	"github.com/PharosVPN/relay/core"
+	"github.com/PharosVPN/relay/tunnel"
 	"github.com/spf13/cobra"
 )
 
-// defaultConfigDir is where a remote beacon reads its mTLS material.
+// defaultConfigDir is where a remote relay reads its mTLS material.
 // coxswain places it there during relay enrollment (DESIGN §5); until
 // that milestone (R5) an operator stages the files by hand.
-const defaultConfigDir = "/etc/beacon"
+const defaultConfigDir = "/etc/relay"
 
 // mTLS material filenames inside the config dir.
 const (
 	fileDeviceCA = "device-ca.crt" // verifies caravel client certs
 	fileFleetCA  = "fleet-ca.crt"  // verifies coxswain on the tunnel + backend legs
-	fileRelayCrt = "relay.crt"     // beacon's Fleet-CA relay cert
+	fileRelayCrt = "relay.crt"     // relay's Fleet-CA relay cert
 	fileRelayKey = "relay.key"     // its private key
 )
 
@@ -38,9 +38,9 @@ func newRunCmd() *cobra.Command {
 	var clientAddr, tunnelAddr, configDir string
 	cmd := &cobra.Command{
 		Use:   "run",
-		Short: "Run beacon as a remote relay",
-		Long: "Run beacon as a remote relay on a public host.\n\n" +
-			"beacon serves caravel clients on --client-addr and waits for the\n" +
+		Short: "Run relay as a remote relay",
+		Long: "Run relay as a remote relay on a public host.\n\n" +
+			"relay serves caravel clients on --client-addr and waits for the\n" +
 			"coxswain controller to dial IN on --tunnel-addr; coxswain opens no inbound\n" +
 			"ports of its own. Each client RPC is forwarded as a multiplexed\n" +
 			"substream back through that one coxswain-initiated connection.\n\n" +
@@ -48,7 +48,7 @@ func newRunCmd() *cobra.Command {
 			"relay.crt and relay.key. Relay enrollment (R5) will issue these over\n" +
 			"SSH; for now stage them by hand.\n\n" +
 			"To embed a relay in-process instead, coxswain imports the\n" +
-			"github.com/PharosVPN/beacon/relay package — see docs/COXSWAIN-INTEGRATION.md.",
+			"github.com/PharosVPN/relay/core package — see docs/COXSWAIN-INTEGRATION.md.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runRemote(cmd.Context(), runOptions{
@@ -73,7 +73,7 @@ type runOptions struct {
 	configDir  string
 }
 
-// runRemote operates beacon as a remote relay until the context is
+// runRemote operates relay as a remote relay until the context is
 // cancelled (SIGINT/SIGTERM).
 func runRemote(ctx context.Context, opts runOptions) error {
 	logf := func(format string, args ...any) { log.Printf(format, args...) }
@@ -83,7 +83,7 @@ func runRemote(ctx context.Context, opts runOptions) error {
 		return err
 	}
 
-	// Tunnel listener: coxswain dials in here over mTLS. beacon terminates
+	// Tunnel listener: coxswain dials in here over mTLS. relay terminates
 	// the TLS, then tunnel.AcceptOne wraps the connection as a yamux
 	// client session.
 	tunnelTLS, err := mat.tunnelServerTLS()
@@ -102,7 +102,7 @@ func runRemote(ctx context.Context, opts runOptions) error {
 	var current atomic.Pointer[tunnel.ClientTunnel]
 	go acceptTunnels(ctx, tunnelLis, &current, logf)
 
-	r, err := relay.Start(relay.Config{
+	r, err := core.Start(core.Config{
 		ClientListenAddr: opts.clientAddr,
 		RelayCertPEM:     mat.relayCert,
 		RelayKeyPEM:      mat.relayKey,
@@ -111,7 +111,7 @@ func runRemote(ctx context.Context, opts runOptions) error {
 		BackendDialer: func(dctx context.Context, _ string) (net.Conn, error) {
 			ct := current.Load()
 			if ct == nil || ct.Closed() {
-				return nil, errors.New("beacon: no coxswain tunnel connected")
+				return nil, errors.New("relay: no coxswain tunnel connected")
 			}
 			return ct.Open(dctx)
 		},
@@ -122,10 +122,10 @@ func runRemote(ctx context.Context, opts runOptions) error {
 	}
 	defer r.Stop()
 
-	logf("[beacon] remote relay ready — caravel clients on %s, coxswain tunnel on %s",
+	logf("[relay] remote relay ready — caravel clients on %s, coxswain tunnel on %s",
 		r.Addr(), opts.tunnelAddr)
 	<-ctx.Done()
-	logf("[beacon] shutdown signal received")
+	logf("[relay] shutdown signal received")
 	return nil
 }
 
@@ -146,7 +146,7 @@ func acceptTunnels(
 			if ctx.Err() != nil {
 				return
 			}
-			logf("[beacon] tunnel accept failed: %v (retrying in %s)", err, retryPause)
+			logf("[relay] tunnel accept failed: %v (retrying in %s)", err, retryPause)
 			select {
 			case <-ctx.Done():
 				return
@@ -155,13 +155,13 @@ func acceptTunnels(
 			continue
 		}
 		current.Store(ct)
-		logf("[beacon] coxswain tunnel connected")
+		logf("[relay] coxswain tunnel connected")
 		select {
 		case <-ctx.Done():
 			return
 		case <-ct.Done():
 			current.Store(nil)
-			logf("[beacon] coxswain tunnel closed — awaiting reconnect")
+			logf("[relay] coxswain tunnel closed — awaiting reconnect")
 		}
 	}
 }
@@ -202,7 +202,7 @@ func loadMaterial(dir string) (*material, error) {
 	return m, nil
 }
 
-// tunnelServerTLS is the TLS config for the tunnel listener. beacon
+// tunnelServerTLS is the TLS config for the tunnel listener. relay
 // presents its relay cert; coxswain must present a Fleet-CA client cert.
 func (m *material) tunnelServerTLS() (*tls.Config, error) {
 	cert, err := tls.X509KeyPair(m.relayCert, m.relayKey)

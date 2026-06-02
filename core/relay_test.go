@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 The PharosVPN Authors
 
-package relay
+package core
 
 import (
 	"context"
@@ -41,7 +41,7 @@ func newPKI(t *testing.T) *pki {
 	device := newTestCA(t, "PharosVPN Device CA")
 	p := &pki{fleetCA: fleet, deviceCA: device}
 	p.relayCertPEM, p.relayKeyPEM = fleet.leaf(t, leafOpts{
-		cn: "beacon-relay", org: delegationOrg, dns: []string{"beacon"},
+		cn: "relay-relay", org: delegationOrg, dns: []string{"relay"},
 		server: true, client: true,
 	})
 	p.coxswainCertPEM, p.coxswainKeyPEM = fleet.leaf(t, leafOpts{
@@ -112,7 +112,7 @@ func TestEmbeddedRelay(t *testing.T) {
 	t.Cleanup(r.Stop)
 
 	cc := dialThrough(t, r.Addr().String(),
-		caravelClientTLS(t, p.fleetCA.certPEM, p.caravelCertPEM, p.caravelKeyPEM, "beacon"))
+		caravelClientTLS(t, p.fleetCA.certPEM, p.caravelCertPEM, p.caravelKeyPEM, "relay"))
 	t.Cleanup(func() { _ = cc.Close() })
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -167,7 +167,7 @@ func TestEmbeddedRelayPreEnrolment(t *testing.T) {
 	t.Cleanup(r.Stop)
 
 	cc := dialThrough(t, r.Addr().String(),
-		caravelClientTLS(t, p.fleetCA.certPEM, nil, nil, "beacon"))
+		caravelClientTLS(t, p.fleetCA.certPEM, nil, nil, "relay"))
 	t.Cleanup(func() { _ = cc.Close() })
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -202,7 +202,7 @@ func TestEmbeddedRelayBidiStream(t *testing.T) {
 	t.Cleanup(r.Stop)
 
 	cc := dialThrough(t, r.Addr().String(),
-		caravelClientTLS(t, p.fleetCA.certPEM, p.caravelCertPEM, p.caravelKeyPEM, "beacon"))
+		caravelClientTLS(t, p.fleetCA.certPEM, p.caravelCertPEM, p.caravelKeyPEM, "relay"))
 	t.Cleanup(func() { _ = cc.Close() })
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

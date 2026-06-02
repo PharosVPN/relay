@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/yamux"
 )
 
-// Tunnel yamux tunables, matching the beacon ingress tunnel: a 20s keep-alive
+// Tunnel yamux tunables, matching the relay ingress tunnel: a 20s keep-alive
 // detects a dead far side within ~20s without waiting on TCP RST (which can lag
 // minutes behind a NAT), and a 10s write timeout bounds a stalled peer.
 func yamuxCfg() *yamux.Config {
@@ -31,7 +31,7 @@ func yamuxCfg() *yamux.Config {
 // down (coxswain disconnects, keep-alive fails, or ctx is cancelled), then
 // returns so the caller can accept the next coxswain connection.
 //
-// The substream direction is the inverse of the beacon ingress tunnel: there
+// The substream direction is the inverse of the relay ingress tunnel: there
 // the relay opens streams toward coxswain; here coxswain opens streams toward
 // the relay and the relay dials out (DESIGN §3, decision 19).
 func AcceptAndServe(ctx context.Context, conn net.Conn, dial Dialer) error {
@@ -55,7 +55,7 @@ func AcceptAndServe(ctx context.Context, conn net.Conn, dial Dialer) error {
 }
 
 // RunRelay serves egress tunnels accepted on lis, one coxswain at a time (v1:
-// one controller per relay, matching the beacon ingress tunnel). When a
+// one controller per relay, matching the relay ingress tunnel). When a
 // coxswain session ends it loops to accept the next. It returns when ctx is
 // cancelled or lis stops accepting. dial is how the relay reaches nodes
 // (typically (&net.Dialer{Timeout: …}).DialContext).

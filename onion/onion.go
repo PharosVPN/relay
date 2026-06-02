@@ -42,7 +42,7 @@ const (
 )
 
 // Hop is one relay on the path: its onion public key, plus the address the
-// previous hop dials to reach it (its `beacon egress` onion endpoint).
+// previous hop dials to reach it (its `relay egress` onion endpoint).
 type Hop struct {
 	Addr     string
 	OnionPub *ecdh.PublicKey

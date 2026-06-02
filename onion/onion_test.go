@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/PharosVPN/beacon/onion"
+	"github.com/PharosVPN/relay/onion"
 )
 
 // genHops returns n relay hops with fresh X25519 onion keys, plus their private

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 The PharosVPN Authors
 
-package relay
+package core
 
 import (
 	"context"
@@ -19,8 +19,8 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-// Pinned beacon↔coxswain identifiers. coxswain owns the relayed-client
-// contract and pins these in coxswain/BUILD.md ("Pinned beacon ↔ coxswain
+// Pinned relay↔coxswain identifiers. coxswain owns the relayed-client
+// contract and pins these in coxswain/BUILD.md ("Pinned relay ↔ coxswain
 // identifiers"); coxswain's M6b proto and PKI use them exactly. Change
 // them only in lockstep with coxswain.
 const (
@@ -157,7 +157,7 @@ func pipeFrames(in grpc.ServerStream, out grpc.ClientStream) error {
 
 // fingerprintFromPeer extracts the SHA-256 fingerprint of the peer's
 // leaf cert. Same shape coxswain uses (sha256:<hex-of-PEM>) so coxswain and
-// beacon agree on the value without sharing code.
+// relay agree on the value without sharing code.
 func fingerprintFromPeer(ctx context.Context) (string, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok || p.AuthInfo == nil {

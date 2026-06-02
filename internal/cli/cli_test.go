@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// TestVersionCommand confirms `beacon version` prints the build version and
+// TestVersionCommand confirms `relay version` prints the build version and
 // nothing else — coxswain parses this output verbatim after an SSH install.
 func TestVersionCommand(t *testing.T) {
 	root := newRootCmd()
@@ -64,7 +64,7 @@ func TestLoadMaterialComplete(t *testing.T) {
 	}
 }
 
-// TestGenCSRCommand confirms `beacon gen-csr` writes the relay key into
+// TestGenCSRCommand confirms `relay gen-csr` writes the relay key into
 // the config dir and prints only a CSR PEM to stdout — coxswain captures
 // that stdout verbatim over SSH.
 func TestGenCSRCommand(t *testing.T) {

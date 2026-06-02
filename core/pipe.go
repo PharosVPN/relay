@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 The PharosVPN Authors
 
-package relay
+package core
 
 import (
 	"context"
@@ -75,6 +75,6 @@ func (p *Pipe) Addr() net.Addr { return pipeAddr{} }
 type pipeAddr struct{}
 
 func (pipeAddr) Network() string { return "pipe" }
-func (pipeAddr) String() string  { return "beacon-embedded-pipe" }
+func (pipeAddr) String() string  { return "relay-embedded-pipe" }
 
 var errPipeClosed = errors.New("relay: embedded pipe closed")

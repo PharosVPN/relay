@@ -8,7 +8,7 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/PharosVPN/beacon/onion"
+	"github.com/PharosVPN/relay/onion"
 )
 
 func randKeys(t *testing.T, n int) [][]byte {

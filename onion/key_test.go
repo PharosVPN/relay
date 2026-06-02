@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/PharosVPN/beacon/onion"
+	"github.com/PharosVPN/relay/onion"
 )
 
 // TestLoadOrCreateKey proves the onion key is minted once and stably reloaded,

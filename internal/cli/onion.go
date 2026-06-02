@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/PharosVPN/beacon/onion"
+	"github.com/PharosVPN/relay/onion"
 	"github.com/spf13/cobra"
 )
 
@@ -19,14 +19,14 @@ func newOnionCmd() *cobra.Command {
 	var listenAddr, configDir string
 	cmd := &cobra.Command{
 		Use:   "onion",
-		Short: "Run beacon as a control-plane onion relay",
-		Long: "Run beacon as a control-plane onion-routing hop (DESIGN §3, decision\n" +
+		Short: "Run relay as a control-plane onion relay",
+		Long: "Run relay as a control-plane onion-routing hop (DESIGN §3, decision\n" +
 			"20). It peels its own layer of each circuit with its onion key, forwards\n" +
 			"to the next hop, and pumps the layered stream — learning only its\n" +
 			"neighbours, never coxswain's identity or the rest of the path.\n\n" +
 			"The listener is plain TCP: the onion supplies confidentiality (setup\n" +
 			"sealed to each relay's key, data layered), and a connection whose setup\n" +
-			"was not sealed to this relay is dropped. Run `beacon onion-key` first to\n" +
+			"was not sealed to this relay is dropped. Run `relay onion-key` first to\n" +
 			"mint onion.key in --config-dir.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -62,7 +62,7 @@ func runOnion(ctx context.Context, listenAddr, configDir string) error {
 		return (&net.Dialer{Timeout: 15 * time.Second}).DialContext(dctx, network, address)
 	}
 
-	logf("[beacon] onion relay ready on %s", listenAddr)
+	logf("[relay] onion relay ready on %s", listenAddr)
 	for {
 		conn, err := ln.Accept()
 		if err != nil {

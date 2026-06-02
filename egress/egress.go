@@ -14,7 +14,7 @@
 // compromised relay host learns only "coxswain talked to node:port", never the
 // contents.
 //
-// This is the inverse of the beacon ingress proxy (package relay): there the
+// This is the inverse of the relay ingress proxy (package relay): there the
 // relay opens substreams toward coxswain; here coxswain opens substreams toward
 // the relay. coxswain stays the dialer in both, so it keeps zero inbound.
 package egress

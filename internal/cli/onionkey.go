@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/PharosVPN/beacon/onion"
+	"github.com/PharosVPN/relay/onion"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +19,7 @@ const fileOnionKey = "onion.key"
 // prints its base64 X25519 public key to stdout.
 //
 // Part of SSH enrolment for control-plane onion routing (DESIGN §3, decision
-// 20): coxswain runs `beacon onion-key` over SSH, captures the public key, and
+// 20): coxswain runs `relay onion-key` over SSH, captures the public key, and
 // records it on the relay so it can seal onion layers to this hop. The private
 // key is written to onion.key and never leaves the host. Idempotent.
 func newOnionKeyCmd() *cobra.Command {
@@ -37,9 +37,9 @@ func newOnionKeyCmd() *cobra.Command {
 			// Diagnostics to stderr; stdout carries only the public key so
 			// coxswain can capture it cleanly over SSH.
 			if created {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "beacon: generated onion key at %s\n", keyPath)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "relay: generated onion key at %s\n", keyPath)
 			} else {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "beacon: reusing existing onion key at %s\n", keyPath)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "relay: reusing existing onion key at %s\n", keyPath)
 			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), onion.PublicKeyBase64(priv.PublicKey()))
 			return err

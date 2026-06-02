@@ -1,4 +1,4 @@
-module github.com/PharosVPN/beacon
+module github.com/PharosVPN/relay
 
 go 1.25.6
 

@@ -1,25 +1,25 @@
-# Build and packaging for beacon, the PharosVPN relay.
+# Build and packaging for relay, the PharosVPN relay.
 #
-# `make build` produces a static, dependency-free binary — beacon has no
+# `make build` produces a static, dependency-free binary — relay has no
 # cgo dependencies, so CGO_ENABLED=0 yields a single file that runs on any
 # Linux host. Cross-compile for a deployment target with the standard Go
 # environment variables, e.g.:
 #
 #     GOOS=linux GOARCH=amd64 make build
 
-BINARY  := beacon
-CMD     := ./cmd/beacon
+BINARY  := relay
+CMD     := ./cmd/relay
 DIST    := dist
 
 # VERSION is stamped into the binary (see internal/cli.version). It comes
 # from git, falling back to "dev" outside a checkout.
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS := -s -w -X github.com/PharosVPN/beacon/internal/cli.version=$(VERSION)
+LDFLAGS := -s -w -X github.com/PharosVPN/relay/internal/cli.version=$(VERSION)
 
 .DEFAULT_GOAL := build
 
 .PHONY: build
-build: ## Build the static beacon binary into dist/
+build: ## Build the static relay binary into dist/
 	CGO_ENABLED=0 go build -trimpath -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY) $(CMD)
 
 .PHONY: test

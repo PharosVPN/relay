@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/PharosVPN/beacon/egress"
+	"github.com/PharosVPN/relay/egress"
 	"github.com/spf13/cobra"
 )
 
@@ -23,18 +23,18 @@ func newEgressCmd() *cobra.Command {
 	var tunnelAddr, configDir string
 	cmd := &cobra.Command{
 		Use:   "egress",
-		Short: "Run beacon as a control-plane egress relay",
-		Long: "Run beacon as a control-plane egress relay (DESIGN §3, decision 19).\n\n" +
+		Short: "Run relay as a control-plane egress relay",
+		Long: "Run relay as a control-plane egress relay (DESIGN §3, decision 19).\n\n" +
 			"coxswain dials IN on --tunnel-addr and opens one substream per outbound\n" +
 			"connection to a node; each substream carries a CONNECT target (a node\n" +
-			"host:port) that beacon dials over raw TCP and pipes. The node — and any\n" +
-			"observer watching it — sees beacon's IP, never coxswain's.\n\n" +
-			"beacon is protocol-blind here: the gRPC-mTLS or SSH payload riding the\n" +
+			"host:port) that relay dials over raw TCP and pipes. The node — and any\n" +
+			"observer watching it — sees relay's IP, never coxswain's.\n\n" +
+			"relay is protocol-blind here: the gRPC-mTLS or SSH payload riding the\n" +
 			"substream is end-to-end secured between coxswain and the node, so a\n" +
 			"compromised relay learns only 'coxswain reached node:port', never the\n" +
 			"contents. One generic relay therefore serves both control channels.\n\n" +
 			"mTLS material is read from --config-dir: fleet-ca.crt (verifies coxswain),\n" +
-			"relay.crt and relay.key (beacon's identity) — the same files as `run`,\n" +
+			"relay.crt and relay.key (relay's identity) — the same files as `run`,\n" +
 			"minus device-ca.crt (this leg carries no caravel clients).",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -48,7 +48,7 @@ func newEgressCmd() *cobra.Command {
 	return cmd
 }
 
-// runEgress operates beacon as a control-plane egress relay until the context
+// runEgress operates relay as a control-plane egress relay until the context
 // is cancelled (SIGINT/SIGTERM).
 func runEgress(ctx context.Context, tunnelAddr, configDir string) error {
 	logf := func(format string, args ...any) { log.Printf(format, args...) }
@@ -70,11 +70,11 @@ func runEgress(ctx context.Context, tunnelAddr, configDir string) error {
 		return (&net.Dialer{Timeout: 15 * time.Second}).DialContext(dctx, network, address)
 	}
 
-	logf("[beacon] egress relay ready — coxswain egress tunnel on %s", tunnelAddr)
+	logf("[relay] egress relay ready — coxswain egress tunnel on %s", tunnelAddr)
 	return egress.RunRelay(ctx, tunnelLis, nodeDial, logf)
 }
 
-// egressTunnelTLS builds the egress tunnel listener TLS: beacon presents its
+// egressTunnelTLS builds the egress tunnel listener TLS: relay presents its
 // relay cert; coxswain must present a Fleet-CA client cert. Mirrors run's
 // tunnelServerTLS, but needs no device-ca (no caravel clients on this leg).
 func egressTunnelTLS(dir string) (*tls.Config, error) {

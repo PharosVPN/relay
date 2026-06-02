@@ -2,21 +2,21 @@
 // Copyright (C) 2026 The PharosVPN Authors
 
 // Package tunnel is the reverse-tunnel transport between coxswain (the
-// controller) and a remote beacon relay.
+// controller) and a remote relay relay.
 //
-// Why it exists: beacon is the only public surface (clients dial it).
+// Why it exists: relay is the only public surface (clients dial it).
 // coxswain lives wherever it's safe — home LAN, private VPC, laptop —
 // behind whatever NAT / firewall, with zero inbound ports (DESIGN §2).
-// Without this package, a remote beacon would have to dial INTO coxswain's
+// Without this package, a remote relay would have to dial INTO coxswain's
 // mTLS port, meaning coxswain needs a public IP + open inbound. That's the
-// anti-pattern this fixes: coxswain dials OUT to beacon.
+// anti-pattern this fixes: coxswain dials OUT to relay.
 //
 // Wire direction:
 //
-//	coxswain  ── TCP+mTLS ──▶  beacon:tunnel-port   (long-lived, retried)
+//	coxswain  ── TCP+mTLS ──▶  relay:tunnel-port   (long-lived, retried)
 //	  (yamux Server, accepts)        (yamux Client, opens)
 //
-//	client ── mTLS ──▶ beacon:public ── yamux substream ──▶ coxswain
+//	client ── mTLS ──▶ relay:public ── yamux substream ──▶ coxswain
 //	                   (package relay)               (coxswain's grpc.Server)
 //
 // coxswain's grpc.Server doesn't know the tunnel exists. Every accepted
@@ -25,15 +25,15 @@
 // net.Listener.
 //
 // This package is TLS-agnostic: coxswain builds the *tls.Config it dials
-// with, and beacon wraps its tunnel listener with tls.NewListener
+// with, and relay wraps its tunnel listener with tls.NewListener
 // before handing it to AcceptOne. The tunnel leg is mutually
 // authenticated — coxswain presents a Fleet-CA leaf carrying
 // Organization="PharosVPN Relay" (the pinned delegation marker, see
-// package relay), beacon presents its Fleet-CA relay cert. The inner
+// package relay), relay presents its Fleet-CA relay cert. The inner
 // gRPC stream that rides the substreams is independently mTLS'd; that
 // inner cert is what coxswain's gRPC auth interceptor reads for delegation.
 //
-// Scope for v1: one coxswain per beacon, one beacon per coxswain. Multi-tenant
+// Scope for v1: one coxswain per relay, one relay per coxswain. Multi-tenant
 // fan-in (several controllers behind one relay) needs a routing layer
 // on the relay side and is deferred.
 package tunnel
@@ -213,13 +213,13 @@ func runDialLoop(
 		if obs.OnAttempt != nil {
 			obs.OnAttempt()
 		}
-		logf("[beacon] dialing relay %s", relayAddr)
+		logf("[relay] dialing relay %s", relayAddr)
 
 		dialCtx, dialCancel := context.WithTimeout(ctx, opts.dialTimeout)
 		conn, err := opts.dial(dialCtx, "tcp", relayAddr)
 		dialCancel()
 		if err != nil {
-			logf("[beacon] dial failed: %v (retrying in %s)", err, backoff)
+			logf("[relay] dial failed: %v (retrying in %s)", err, backoff)
 			if obs.OnDialFail != nil {
 				obs.OnDialFail(err)
 			}
@@ -237,7 +237,7 @@ func runDialLoop(
 		sess, err := yamux.Server(conn, cfg)
 		if err != nil {
 			_ = conn.Close()
-			logf("[beacon] yamux.Server: %v", err)
+			logf("[relay] yamux.Server: %v", err)
 			if obs.OnDialFail != nil {
 				obs.OnDialFail(err)
 			}
@@ -248,7 +248,7 @@ func runDialLoop(
 			continue
 		}
 
-		logf("[beacon] tunnel established → %s", relayAddr)
+		logf("[relay] tunnel established → %s", relayAddr)
 		if obs.OnConnect != nil {
 			obs.OnConnect()
 		}
@@ -259,9 +259,9 @@ func runDialLoop(
 		sessionDuration := time.Since(sessionStart)
 
 		if serveErr != nil {
-			logf("[beacon] session exited after %s: %v", sessionDuration.Round(time.Millisecond), serveErr)
+			logf("[relay] session exited after %s: %v", sessionDuration.Round(time.Millisecond), serveErr)
 		} else {
-			logf("[beacon] session exited cleanly after %s", sessionDuration.Round(time.Millisecond))
+			logf("[relay] session exited cleanly after %s", sessionDuration.Round(time.Millisecond))
 		}
 		if obs.OnSessionExit != nil {
 			obs.OnSessionExit(serveErr, sessionDuration)
@@ -273,7 +273,7 @@ func runDialLoop(
 		// accepting the TLS but immediately closing yamux). Stable
 		// sessions reset backoff to initial.
 		if sessionDuration < opts.stableThreshold {
-			logf("[beacon] session fast-failed (<%s); backing off %s before reconnect",
+			logf("[relay] session fast-failed (<%s); backing off %s before reconnect",
 				opts.stableThreshold, backoff)
 			if waitErr := waitOrCancel(ctx, backoff); waitErr != nil {
 				return waitErr

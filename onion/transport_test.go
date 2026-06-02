@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PharosVPN/beacon/onion"
+	"github.com/PharosVPN/relay/onion"
 )
 
 func plainDial(ctx context.Context, network, address string) (net.Conn, error) {

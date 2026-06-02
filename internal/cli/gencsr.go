@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/PharosVPN/beacon/internal/pki"
+	"github.com/PharosVPN/relay/internal/pki"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +15,7 @@ import (
 // prints a PEM-encoded certificate signing request to stdout.
 //
 // This is the first step of SSH enrolment (DESIGN §5, decision 14):
-// coxswain runs `beacon gen-csr` over SSH, captures the CSR from stdout,
+// coxswain runs `relay gen-csr` over SSH, captures the CSR from stdout,
 // signs it with the Fleet CA, and pushes relay.crt, fleet-ca.crt and
 // device-ca.crt back. The relay's private key is written to relay.key
 // and never leaves the host.
@@ -39,9 +39,9 @@ func newGenCSRCmd() *cobra.Command {
 			// coxswain can capture it cleanly over SSH. A failed diagnostic
 			// write must not fail gen-csr itself.
 			if res.KeyGenerated {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "beacon: generated relay key at %s\n", keyPath)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "relay: generated relay key at %s\n", keyPath)
 			} else {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "beacon: reusing existing relay key at %s\n", keyPath)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "relay: reusing existing relay key at %s\n", keyPath)
 			}
 			_, err = cmd.OutOrStdout().Write(res.CSRPEM)
 			return err

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 The PharosVPN Authors
 
-// Package pki handles beacon's relay-side certificate material: it
+// Package pki handles relay's relay-side certificate material: it
 // generates the relay's mTLS keypair on the host and emits a
 // certificate signing request.
 //
@@ -39,7 +39,7 @@ const keyFileMode = 0o600
 // subject entirely and assigns the real identity at signing time —
 // crucially Organization, which carries the delegation marker and must
 // not be self-asserted by the relay host.
-var csrSubject = pkix.Name{CommonName: "pharos-beacon-relay"}
+var csrSubject = pkix.Name{CommonName: "pharos-relay-relay"}
 
 // CSRResult is the outcome of GenerateCSR.
 type CSRResult struct {
@@ -54,7 +54,7 @@ type CSRResult struct {
 // GenerateCSR ensures a relay private key exists at keyPath and returns
 // a certificate signing request built from it.
 //
-// If keyPath already holds a key it is reused, making `beacon gen-csr`
+// If keyPath already holds a key it is reused, making `relay gen-csr`
 // idempotent: re-running it after a failed enrolment emits a fresh CSR
 // for the same key rather than orphaning the old one. The parent
 // directory is created if missing.
