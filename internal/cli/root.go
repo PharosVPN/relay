@@ -39,6 +39,7 @@ func newRootCmd() *cobra.Command {
 		newRunCmd(),
 		newEgressCmd(),
 		newOnionKeyCmd(),
+		newOnionCmd(),
 		newVersionCmd(),
 	)
 	return root
