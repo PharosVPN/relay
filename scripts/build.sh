@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# Build relay with the version from VERSION injected at link time.
-#   scripts/build.sh [output-path]
+# Build relay — a fully static, single binary (no dynamic linking, ever):
+#   CGO_ENABLED=0 forces pure-Go net (netgo) + os/user (osusergo) too, so there
+#   is no libc dependency. Version is injected from VERSION at link time.
+#   scripts/build.sh [output-path]   (GOOS/GOARCH from env for cross-builds)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSION="$(tr -d '[:space:]' < VERSION)"
-go build -ldflags "-X github.com/PharosVPN/relay/internal/cli.version=$VERSION" -o "${1:-bin/relay}" ./cmd/relay
-echo "built relay $VERSION -> ${1:-bin/relay}"
+CGO_ENABLED=0 go build -trimpath -tags netgo,osusergo \
+  -ldflags "-X github.com/PharosVPN/relay/internal/cli.version=$VERSION" \
+  -o "${1:-bin/relay}" ./cmd/relay
+echo "built relay $VERSION (static) -> ${1:-bin/relay}"
