@@ -14,9 +14,11 @@ import (
 	"strings"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 )
 
 // Pinned relay↔coxswain identifiers. coxswain owns the relayed-client
@@ -41,6 +43,27 @@ const (
 	delegationOrg = "PharosVPN Relay"
 )
 
+// certlessAllowedMethods is the audit allowlist of full gRPC method
+// paths a caravel client may invoke WITHOUT presenting a Device-CA
+// leaf. Everything not listed here requires a verified device cert.
+//
+// Today this is exactly the enrolment-ticket redemption: a brand-new
+// device has no Device-CA leaf yet (that is the point of enrolling),
+// so it cannot be mTLS-gated for this one RPC. coxswain validates the
+// ticket on the far end; the relay only relaxes the cert requirement
+// for this method and nothing else. Keep this list minimal — every
+// entry is a method reachable by an unauthenticated client.
+var certlessAllowedMethods = map[string]struct{}{
+	"/pharos.account.v1.AccountSync/ClaimEnrollment": {},
+}
+
+// certlessAllowed reports whether fullMethod may be invoked by a
+// client that presented no Device-CA leaf.
+func certlessAllowed(fullMethod string) bool {
+	_, ok := certlessAllowedMethods[fullMethod]
+	return ok
+}
+
 // director forwards every inbound gRPC stream to coxswain over the single
 // backend connection. It is registered as the gRPC server's
 // UnknownServiceHandler, so it catches every (service, method) pair —
@@ -57,6 +80,19 @@ func (d *director) handle(_ any, ss grpc.ServerStream) error {
 	method, ok := grpc.MethodFromServerStream(ss)
 	if !ok {
 		return errMissingMethod
+	}
+
+	// Per-method cert enforcement. The listener accepts the handshake
+	// with or without a Device-CA leaf (tls.VerifyClientCertIfGiven),
+	// so the identity decision happens HERE, once the gRPC method is
+	// known. A client that presented no verified leaf may invoke only
+	// the certless allowlist (enrolment-ticket redemption); every
+	// other method demands the leaf and is rejected Unauthenticated.
+	_, fpErr := fingerprintFromPeer(ss.Context())
+	hasDeviceCert := fpErr == nil
+	if !hasDeviceCert && !certlessAllowed(method) {
+		return status.Errorf(codes.Unauthenticated,
+			"relay: %s requires a device certificate", method)
 	}
 
 	outCtx := buildOutgoingCtx(ss.Context())
@@ -82,9 +118,13 @@ func (d *director) handle(_ any, ss grpc.ServerStream) error {
 // x-pharos-* key the client might have set is stripped first, so a
 // malicious client cannot spoof identity by setting its own header.
 //
-// Pre-cert callers (enrolment, before the device holds a Device-CA
-// leaf) get the same sanitation minus the fingerprint injection —
-// coxswain's anonymous-policy path handles them on the other end.
+// Certless callers (enrolment-ticket redemption, before the device
+// holds a Device-CA leaf) get the same sanitation minus the
+// fingerprint injection — fingerprintFromPeer fails with no leaf, so
+// no x-pharos-device-fp is ever forwarded for them. coxswain's
+// ticket-redemption path validates them on the other end. Only the
+// certlessAllowedMethods allowlist reaches here without a cert; every
+// other method is rejected upstream in director.handle.
 func buildOutgoingCtx(in context.Context) context.Context {
 	inMD, _ := metadata.FromIncomingContext(in)
 	outMD := make(metadata.MD, len(inMD)+1)
