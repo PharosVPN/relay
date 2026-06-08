@@ -36,7 +36,7 @@ install -m 0755 dist/relay /usr/local/bin/relay
 
 ## 3. Enrol with coxswain (CSR-over-SSH)
 
-Enrolment mirrors `buoy` node onboarding — CSR-over-SSH, no bootstrap token
+Enrolment mirrors `node` onboarding — CSR-over-SSH, no bootstrap token
 (DESIGN §5, decision 14). `coxswain` automates the steps below over SSH; the
 manual equivalent is:
 

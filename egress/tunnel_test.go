@@ -14,7 +14,7 @@ import (
 )
 
 // newEchoServer starts a TCP echo backend and returns its address. It stands in
-// for a buoy node the relay dials.
+// for a node the relay dials.
 func newEchoServer(t *testing.T) string {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")

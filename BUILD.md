@@ -51,7 +51,7 @@ No `relay` work is foreseen, and that is the point: a future client exit-switch
 call (`caravel → relay → coxswain`) is just another opaque control RPC. Keep the
 proxy **method-agnostic** — never enumerate or whitelist the set of RPCs
 relayed, so a new control RPC needs zero relay change. (The reverse-tunnel
-transport may also later be reused for `buoy`→`buoy` NAT traversal to a NAT'd
+transport may also later be reused for `node`→`node` NAT traversal to a NAT'd
 exit node; no action now, just don't assume the tunnel is client-traffic-only.)
 
 ## Milestones
